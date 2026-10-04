@@ -1,0 +1,14 @@
+# Secrets
+resources/env/*/.env.yaml
+# Bronze: downloaded exchange files. Never deleted, never re-downloaded, never committed.
+raw/
+lake/
+logs/
+api/.venv/
+api/dist/
+api/build/
+**/__pycache__/
+**/*.egg-info/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Screener · Equity Engine{% endblock %}
+{% block heading %}Screener{% if run %} <span class="font-normal text-base-content/60">— run of {{ run.as_of | fmt_date }}</span>{% endif %}{% endblock %}
+{% block content %}
+{% if not run %}{% include "_no_run.html" %}{% else %}
+<form class="card bg-base-100 shadow-sm mb-3" hx-get="/screen" hx-target="#screen-rows" hx-trigger="change, input changed delay:400ms from:[name=min_mcap]" hx-push-url="true" hx-indicator="#screen-busy">
+  <div class="card-body p-4 gap-3">
+    <div class="flex flex-wrap items-center gap-1 text-sm"><span class="w-28 text-xs text-base-content/60">Stance</span>
+      {% for st in stances %}<label class="btn btn-xs {% if st in sel.stance %}btn-active {{ STANCE_CLASS[st] | replace('badge-', 'btn-') | replace(' btn-outline', ' btn-outline') }}{% else %}btn-ghost{% endif %}"><input type="checkbox" name="stance" value="{{ st }}" class="hidden" {% if st in sel.stance %}checked{% endif %}>{{ STANCE_LABEL[st] }}</label>{% endfor %}
+    </div>
+    <div class="flex flex-wrap items-center gap-1 text-sm"><span class="w-28 text-xs text-base-content/60">Conviction</span>
+      {% for c in convictions %}<label class="btn btn-xs {% if c in sel.conviction %}btn-active btn-primary{% else %}btn-ghost{% endif %}"><input type="checkbox" name="conviction" value="{{ c }}" class="hidden" {% if c in sel.conviction %}checked{% endif %}>{{ CONVICTION_LABEL[c] }}</label>{% endfor %}
+    </div>
+    <div class="flex flex-wrap items-center gap-1 text-sm"><span class="w-28 text-xs text-base-content/60">Has signal from</span>
+      {% for e in engines %}<label class="btn btn-xs {% if e.engine_key in sel.has %}btn-active btn-success{% else %}btn-ghost{% endif %}"><input type="checkbox" name="has" value="{{ e.engine_key }}" class="hidden" {% if e.engine_key in sel.has %}checked{% endif %}>{{ e.name }}</label>{% endfor %}
+      <label class="label cursor-pointer gap-1 ml-2 text-xs"><input type="checkbox" name="confirmed_only" value="true" class="checkbox checkbox-xs" {% if sel.confirmed_only %}checked{% endif %}>confirmed only</label>
+    </div>
+    <div class="flex flex-wrap items-center gap-1 text-sm"><span class="w-28 text-xs text-base-content/60">No signal from</span>
+      {% for e in engines %}<label class="btn btn-xs {% if e.engine_key in sel.has_not %}btn-active btn-error{% else %}btn-ghost{% endif %}"><input type="checkbox" name="has_not" value="{{ e.engine_key }}" class="hidden" {% if e.engine_key in sel.has_not %}checked{% endif %}>{{ e.name }}</label>{% endfor %}
+    </div>
+    <div class="flex flex-wrap items-center gap-3 text-sm"><span class="w-28 text-xs text-base-content/60">Universe</span>
+      <label class="input input-bordered input-xs flex items-center gap-1 w-56">min market cap ₹<input type="number" name="min_mcap" value="{{ sel.min_mcap if sel.min_mcap is not none else '' }}" class="grow" placeholder="0"> cr</label>
+      <select name="index" class="select select-bordered select-xs"><option value="">any index</option>{% for code in indices %}<option value="{{ code }}" {% if code == sel.index %}selected{% endif %}>{{ code }}</option>{% endfor %}</select>
+      <span class="loading loading-spinner loading-xs htmx-indicator" id="screen-busy"></span>
+      <a href="/screen" class="btn btn-ghost btn-xs ml-auto">Clear</a>
+    </div>
+  </div>
+</form>
+<div class="card bg-base-100 shadow-sm"><div class="card-body p-4">
+  <div class="overflow-x-auto"><table class="table table-sm">
+    <thead><tr><th>Symbol</th><th>Name</th><th>Stance</th><th>Conviction</th><th class="n">Bull</th><th class="n">Bear</th><th>Engines that fired</th><th class="n">Market cap (₹ cr)</th><th class="n">Close</th><th>Indices</th></tr></thead>
+    <tbody id="screen-rows">{% include "_screen_rows.html" %}</tbody>
+  </table></div>
+  <p class="text-xs text-base-content/60">Long first, then by conviction and size; at most {{ limit }} rows. Chips are filters over the newest run's stance table (spec §75).</p>
+</div></div>
+{% endif %}
+{% endblock %}

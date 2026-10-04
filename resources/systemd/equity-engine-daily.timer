@@ -1,0 +1,10 @@
+[Unit]
+Description=Run the Equity Engine daily ingest after NSE publishes (19:45 IST)
+
+[Timer]
+OnCalendar=Mon..Fri 19:45 Asia/Kolkata
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Engines · Equity Engine{% endblock %}
+{% block heading %}Engine catalogue <span class="font-normal text-base-content/60">— {{ engines | length }} engines in the spec</span>{% endblock %}
+{% block content %}
+<div class="flex flex-wrap gap-2 mb-3 text-sm" id="engine-status-summary">
+  {% for status, label in [('LIVE', 'live in the newest run'), ('READY', 'data present, not built'), ('BLOCKED', 'blocked on data'), ('FRAMEWORK', 'framework, not an engine')] %}
+  <span class="badge {{ STATUS_CLASS[status] }}">{{ by_status.get(status, 0) }} {{ label }}</span>
+  {% endfor %}
+  {% if run %}<span class="text-base-content/60 ml-auto">newest run {{ run.as_of | fmt_date }} · {{ run.signals | num }} signals</span>{% endif %}
+</div>
+<div class="card bg-base-100 shadow-sm"><div class="card-body p-4">
+  <div class="overflow-x-auto"><table class="table table-sm" id="engine-table">
+    <thead><tr><th>Group</th><th>Engine</th><th>§</th><th>Phase</th><th>Radar</th><th>Status</th><th>Needs</th><th class="n">Signals</th><th>By stage</th></tr></thead>
+    <tbody>
+    {% for e in engines %}
+    <tr>
+      <td class="text-xs text-base-content/60">{{ e.group | replace('_', ' ') | lower }}</td>
+      <td><a class="link link-primary font-medium" href="/engine/{{ e.engine_key }}">{{ e.name }}</a>{% if e.version %} <span class="text-xs text-base-content/60">v{{ e.version }}</span>{% endif %}</td>
+      <td>{{ e.spec_section }}</td>
+      <td>{{ e.phase }}</td>
+      <td class="text-xs">{{ e.radar | lower if e.radar != 'NONE' else '—' }}</td>
+      <td><span class="badge badge-sm {{ STATUS_CLASS[e.status] }}">{{ e.status | lower }}</span></td>
+      <td class="text-xs">{% for t in e.requires %}<code class="{% if t in e.missing %}text-error{% else %}text-base-content/60{% endif %}">{{ t }}</code>{% if not loop.last %} {% endif %}{% else %}—{% endfor %}</td>
+      <td class="n">{% if e.implemented %}{{ e.signals | num }}{% else %}—{% endif %}</td>
+      <td class="text-xs">{% for stage, n in e.by_stage | dictsort %}<span class="badge badge-xs {{ STAGE_CLASS[stage] }} mr-1">{{ n }} {{ stage | lower }}</span>{% endfor %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  <p class="text-xs text-base-content/60">Status is derived: <em>live</em> when the engine is implemented and in the newest run; <em>blocked</em> when a table it needs (in red) is empty or absent; <em>ready</em> when the data is there and the engine is not yet written. Live hit rates appear here once outcomes are marked (spec §72).</p>
+</div></div>
+{% endblock %}

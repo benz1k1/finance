@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Radar · Equity Engine{% endblock %}
+{% block heading %}Radar{% if run %} <span class="font-normal text-base-content/60">— as of {{ run.as_of | fmt_date }}</span>{% endif %}{% endblock %}
+{% block header_actions %}<a href="/signal" class="btn btn-ghost btn-xs"><i class="mdi mdi-pulse"></i> Signal feed</a><a href="/engine" class="btn btn-ghost btn-xs"><i class="mdi mdi-engine-outline"></i> Engines</a>{% endblock %}
+{% block content %}
+{% if not run %}
+{% include "_no_run.html" %}
+<div class="card bg-base-100 shadow-sm mt-4"><div class="card-body p-4">
+  <h2 class="card-title text-sm">Engines</h2>
+  <p class="text-sm">{{ catalogue | selectattr('implemented') | list | length }} implemented, {{ catalogue | selectattr('status', 'equalto', 'BLOCKED') | list | length }} blocked on data. <a class="link" href="/engine">Catalogue</a>.</p>
+</div></div>
+{% else %}
+{% set opp = tiles | selectattr('direction', 'equalto', 'BULL') | list %}
+{% set risk = tiles | selectattr('direction', 'equalto', 'BEAR') | list %}
+{% set gates = tiles | selectattr('direction', 'equalto', 'GATE') | list %}
+
+<div class="stats stats-vertical sm:stats-horizontal shadow-sm bg-base-100 w-full mb-4" id="regime">
+  <div class="stat py-3"><div class="stat-title text-xs">Market regime</div><div class="stat-value text-lg {% if regime.regime == 'RISK_ON' %}text-success{% elif regime.regime == 'RISK_OFF' %}text-error{% endif %}">{{ regime.regime | replace('_', ' ') | lower if regime else '—' }}</div><div class="stat-desc">{% if regime and regime.above_200dma_pct is not none %}{{ regime.above_200dma_pct }}% of {{ regime.universe | num }} priced securities above their 200-day average{% endif %}</div></div>
+  <div class="stat py-3"><div class="stat-title text-xs">Median 3-month return</div><div class="stat-value text-lg {% if regime.median_return_3m_pct and regime.median_return_3m_pct < 0 %}text-error{% elif regime.median_return_3m_pct %}text-success{% endif %}">{% if regime.median_return_3m_pct is not none %}{{ regime.median_return_3m_pct }}%{% else %}—{% endif %}</div><div class="stat-desc">across the universe</div></div>
+  <div class="stat py-3"><div class="stat-title text-xs">Advancing over 1 month</div><div class="stat-value text-lg">{% if regime.advancing_1m_pct is not none %}{{ regime.advancing_1m_pct }}%{% else %}—{% endif %}</div><div class="stat-desc">breadth</div></div>
+  <div class="stat py-3"><div class="stat-title text-xs">Stances</div>
+    <div class="stat-value text-lg">
+      {% set ns = namespace(long=0, short=0, avoid=0) %}
+      {% for c in stance_counts %}{% if c.stance in ('LONG', 'LEAN_LONG') %}{% set ns.long = ns.long + c.n %}{% elif c.stance in ('SHORT', 'LEAN_SHORT') %}{% set ns.short = ns.short + c.n %}{% elif c.stance == 'AVOID' %}{% set ns.avoid = ns.avoid + c.n %}{% endif %}{% endfor %}
+      <span class="text-success">{{ ns.long }}</span> / <span class="text-info">{{ ns.short }}</span> / <span class="text-base-content/50">{{ ns.avoid }}</span>
+    </div>
+    <div class="stat-desc">long · short · avoid — <a class="link" href="/screen?stance=LONG&stance=LEAN_LONG">screen</a></div></div>
+</div>
+
+{% macro tile_grid(items, empty) %}
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+  {% for t in items %}
+  <a href="/engine/{{ t.engine_key }}" class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow">
+    <div class="card-body p-3">
+      <div class="flex items-start justify-between gap-2">
+        <h3 class="text-sm font-semibold leading-tight">{{ t.name }}</h3>
+        <span class="text-lg font-bold {{ DIRECTION_CLASS[t.direction] }}">{{ t.total }}</span>
+      </div>
+      <div class="flex h-2 w-full overflow-hidden rounded bg-base-200" title="confirmed · emerging · early">
+        <div class="bg-info" style="width: {{ 100 * t.by_stage.CONFIRMED / t.total }}%"></div>
+        <div class="bg-info/50" style="width: {{ 100 * t.by_stage.EMERGING / t.total }}%"></div>
+        <div class="bg-base-300" style="width: {{ 100 * t.by_stage.EARLY / t.total }}%"></div>
+      </div>
+      <div class="flex justify-between text-xs text-base-content/70">
+        <span>{{ t.by_stage.CONFIRMED }} confirmed · {{ t.by_stage.EMERGING }} emerging · {{ t.by_stage.EARLY }} early</span>
+        {% if previous %}<span class="{% if t.change > 0 %}text-success{% elif t.change < 0 %}text-error{% endif %}">{{ '%+d' % t.change }}</span>{% endif %}
+      </div>
+    </div>
+  </a>
+  {% else %}<p class="text-sm text-base-content/60">{{ empty }}</p>{% endfor %}
+</div>
+{% endmacro %}
+
+{% if regime and regime.sectors %}
+<div class="card bg-base-100 shadow-sm mb-4"><div class="card-body p-3">
+  <h2 class="card-title text-sm">Sector rotation <span class="font-normal text-base-content/60">— industry median return vs the market, 3 months (6 months)</span></h2>
+  <div class="flex flex-wrap gap-1 text-xs" id="sector-strip">
+    {% for s in regime.sectors %}<span class="badge badge-sm {% if s.rel_3m > 0 %}badge-success{% else %}badge-error{% endif %} badge-outline" title="{{ s.members }} members; 6m {{ '%+.1f' % s.rel_6m }}">{{ s.industry }} {{ '%+.1f' % s.rel_3m }}{% if s.improving %} ↑{% endif %}</span>{% endfor %}
+  </div>
+</div></div>
+{% endif %}
+<h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/60 mb-2">Opportunity radar</h2>
+{{ tile_grid(opp, "No bullish signals in this run.") }}
+<h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/60 mt-6 mb-2">Risk radar</h2>
+{{ tile_grid(risk, "No bearish signals in this run.") }}
+<h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/60 mt-6 mb-2">Gates <span class="font-normal normal-case">— removed from any stance, with the reason</span></h2>
+{{ tile_grid(gates, "No gates fired.") }}
+
+<div class="card bg-base-100 shadow-sm mt-6"><div class="card-body p-4">
+  <h2 class="card-title text-sm">Stance changes since the previous run{% if previous %} <span class="font-normal text-base-content/60">— {{ previous.as_of | fmt_date }} → {{ run.as_of | fmt_date }}</span>{% endif %}</h2>
+  {% if changes %}
+  <table class="table table-xs" id="stance-changes"><thead><tr><th>Symbol</th><th>Was</th><th>Now</th></tr></thead><tbody>
+    {% for c in changes %}<tr><td><a class="link link-primary font-medium" href="/security/{{ c.symbol | urlencode }}">{{ c.symbol }}</a></td>
+      <td><span class="badge badge-sm {{ STANCE_CLASS[c.was_stance] }}">{{ STANCE_LABEL[c.was_stance] }}</span> <span class="text-xs text-base-content/60">{{ CONVICTION_LABEL[c.was_conviction] }}</span></td>
+      <td><span class="badge badge-sm {{ STANCE_CLASS[c.stance] }}">{{ STANCE_LABEL[c.stance] }}</span> <span class="text-xs text-base-content/60">{{ CONVICTION_LABEL[c.conviction] }}</span></td></tr>{% endfor %}
+  </tbody></table>
+  {% elif previous %}<p class="text-sm text-base-content/60">No stance changed.</p>
+  {% else %}<p class="text-sm text-base-content/60">Only one run so far; changes appear from the second run.</p>{% endif %}
+</div></div>
+<p class="text-xs text-base-content/60 mt-4">Signals describe measurable conditions that changed and how unusual they are. They are not a recommendation; the decision is the investor's (spec §52).</p>
+{% endif %}
+{% endblock %}

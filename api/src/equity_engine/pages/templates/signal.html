@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Signals · Equity Engine{% endblock %}
+{% block heading %}Signal feed{% if run %} <span class="font-normal text-base-content/60">— run of {{ run.as_of | fmt_date }}</span>{% endif %}{% endblock %}
+{% block content %}
+{% if not run %}{% include "_no_run.html" %}{% else %}
+<form class="flex flex-wrap items-end gap-2 mb-3" hx-get="/signal" hx-target="#signal-rows" hx-trigger="change, input changed delay:250ms from:[name=q]" hx-push-url="true" hx-indicator="#feed-busy">
+  <label class="form-control"><span class="label-text text-xs">Engine</span>
+    <select name="engine" class="select select-bordered select-sm"><option value="">All</option>{% for e in engines %}<option value="{{ e.engine_key }}" {% if e.engine_key == engine %}selected{% endif %}>{{ e.name }}</option>{% endfor %}</select></label>
+  <label class="form-control"><span class="label-text text-xs">Stage</span>
+    <select name="stage" class="select select-bordered select-sm"><option value="">All</option>{% for st in stages %}<option value="{{ st }}" {% if st == stage %}selected{% endif %}>{{ st | capitalize }}</option>{% endfor %}</select></label>
+  <label class="form-control"><span class="label-text text-xs">Direction</span>
+    <select name="direction" class="select select-bordered select-sm"><option value="">All</option>{% for d, label in [('BULL', 'Bullish'), ('BEAR', 'Bearish'), ('GATE', 'Gate')] %}<option value="{{ d }}" {% if d == direction %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+  <label class="form-control"><span class="label-text text-xs">Symbol</span><input type="search" name="q" value="{{ q }}" class="input input-bordered input-sm w-40" placeholder="prefix"></label>
+  <span class="loading loading-spinner loading-xs htmx-indicator" id="feed-busy"></span>
+</form>
+<div class="card bg-base-100 shadow-sm"><div class="card-body p-4">
+  <div class="overflow-x-auto"><table class="table table-sm">
+    <thead><tr><th>Symbol</th><th>Engine</th><th>Signal</th><th>Stage</th><th class="n">Strength</th><th class="n">Pctile</th><th>What fired it</th><th>Invalidated when</th></tr></thead>
+    <tbody id="signal-rows">{% include "_signal_rows.html" %}</tbody>
+  </table></div>
+  <p class="text-xs text-base-content/60">Confirmed first, then by strength; at most {{ limit }} rows. Every row is an append-only ledger entry (spec §72).</p>
+</div></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% block title %}{{ security.nse_symbol }} · Equity Engine{% endblock %}
+{% block heading %}{{ security.nse_symbol }} — {{ security.name }}{% endblock %}
+{% block header_actions %}<a href="/security/{{ security.nse_symbol | urlencode }}/timeline" class="btn btn-ghost btn-xs"><i class="mdi mdi-timeline-text-outline"></i> Timeline</a><a href="/security" class="btn btn-ghost btn-xs"><i class="mdi mdi-arrow-left"></i> Securities</a>{% endblock %}
+{% block content %}
+{% if excluded_as %}
+<div class="alert alert-warning mb-4" id="excluded-banner">
+  <i class="mdi mdi-cancel"></i>
+  <span>Excluded from the universe: {{ excluded_as | join(', ') }}.</span>
+</div>
+{% endif %}
+
+{% if not security.in_universe %}
+<div class="alert mb-4 text-sm" id="outside-universe"><i class="mdi mdi-information-outline"></i><span>Outside the universe (Nifty 500): prices and filings are kept, but no engine runs on it and it has no stance.</span></div>
+{% endif %}
+{% include "_stance_panel.html" %}
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+  <div class="card bg-base-100 shadow-sm"><div class="card-body p-4">
+    <h2 class="card-title text-sm">Identity</h2>
+    <table class="table table-xs">
+      <tr><th>ISIN</th><td>{{ security.isin }}</td></tr>
+      <tr><th>Series · segment</th><td>{{ security.series }} · {{ security.segment }}</td></tr>
+      <tr><th>Listed</th><td>{{ security.listing_date | fmt_date }}</td></tr>
+      <tr><th>Face value</th><td>₹{{ security.face_value | num(2) }}</td></tr>
+      <tr><th>Shares outstanding</th><td>{{ security.issue_size | num }}</td></tr>
+      <tr><th>Market cap</th><td>{% if security.market_cap is not none %}₹{{ security.market_cap | crore }} cr <span class="text-base-content/60">({{ security.market_cap_date | fmt_date }})</span>{% else %}—{% endif %}</td></tr>
+    </table>
+  </div></div>
+
+  <div class="card bg-base-100 shadow-sm"><div class="card-body p-4">
+    <h2 class="card-title text-sm">Trading status</h2>
+    <table class="table table-xs">
+      <tr><th>Price band</th><td>{% if band %}{{ band.band }}{% if band.band != 'No Band' %}%{% endif %} <span class="text-base-content/60">({{ band.snapshot_date | fmt_date }})</span>{% else %}—{% endif %}</td></tr>
+      <tr><th>Surveillance</th><td>
+        {% for item in surveillance %}<span class="badge badge-sm badge-warning mr-1" title="{{ item.surv_desc }}">{{ item.list_code }} {{ item.stage }}</span>{% else %}None{% endfor %}
+      </td></tr>
+      <tr><th>Indices</th><td>
+        {% for item in indices %}<span class="badge badge-sm badge-outline mr-1">{{ item.index_code }}</span>{% else %}None{% endfor %}
+      </td></tr>
+      <tr><th>Industry</th><td>{{ indices[0].industry if indices else '—' }}</td></tr>
+    </table>
+  </div></div>
+
+  <div class="card bg-base-100 shadow-sm"><div class="card-body p-4" id="ownership-card">
+    <h2 class="card-title text-sm">Ownership{% if ownership %} <span class="font-normal text-base-content/60">— quarter ended {{ ownership[0].period_end | fmt_date }}</span>{% endif %}</h2>
+    {% if ownership %}
+    {% set o = ownership[0] %}
+    {% set other = 100 - (o.promoter_pct or 0) - (o.fii_pct or 0) - (o.dii_pct or 0) %}
+    <div class="flex h-3 w-full overflow-hidden rounded bg-base-200" title="Promoter · FII · DII · other public">
+      <div class="bg-primary" style="width: {{ o.promoter_pct or 0 }}%"></div>
+      <div class="bg-secondary" style="width: {{ o.fii_pct or 0 }}%"></div>
+      <div class="bg-accent" style="width: {{ o.dii_pct or 0 }}%"></div>
+    </div>
+    <table class="table table-xs">
+      <tr><th><span class="inline-block w-2 h-2 rounded-full bg-primary"></span> Promoters</th><td class="n">{% if o.promoter_pct is none %}no promoter group{% else %}{{ o.promoter_pct | num(2) }}%{% endif %}</td></tr>
+      <tr><th><span class="inline-block w-2 h-2 rounded-full bg-secondary"></span> FII (foreign institutions)</th><td class="n">{{ o.fii_pct | num(2) }}{% if o.fii_pct is not none %}%{% endif %}</td></tr>
+      <tr><th><span class="inline-block w-2 h-2 rounded-full bg-accent"></span> DII (domestic institutions)</th><td class="n">{{ o.dii_pct | num(2) }}{% if o.dii_pct is not none %}%{% endif %}</td></tr>
+      <tr><td class="pl-6">of which mutual funds</td><td class="n">{{ o.mutual_fund_pct | num(2) }}{% if o.mutual_fund_pct is not none %}%{% endif %}</td></tr>
+      <tr><td class="pl-6">of which insurance</td><td class="n">{{ o.insurance_pct | num(2) }}{% if o.insurance_pct is not none %}%{% endif %}</td></tr>
+      <tr><th>Retail (up to ₹2 lakh)</th><td class="n">{{ o.retail_pct | num(2) }}{% if o.retail_pct is not none %}%{% endif %}</td></tr>
+      <tr><th>Other public</th><td class="n">{{ (other - (o.retail_pct or 0)) | num(2) }}%</td></tr>
+      <tr><th>Shareholders</th><td class="n">{{ o.total_shareholders | num }}</td></tr>
+    </table>
+    {% else %}<p class="text-sm text-base-content/60">No shareholding filing ingested for this company.</p>{% endif %}
+  </div></div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+  <div class="card bg-base-100 shadow-sm lg:col-span-2"><div class="card-body p-4" id="business-card">
+    <h2 class="card-title text-sm">Business{% if business %} <span class="font-normal text-base-content/60">— sustainability report, FY{{ business.fy_to }}</span>{% endif %}</h2>
+    {% if business %}
+    <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+      {% if business.website_url %}<span><i class="mdi mdi-web"></i> <a class="link link-primary" id="company-website" href="{{ business.website_url }}" target="_blank" rel="noopener noreferrer">{{ business.website }}</a></span>{% endif %}
+      {% if business.incorporated_on %}<span>Incorporated {{ business.incorporated_on | fmt_date }}</span>{% endif %}
+      {% if business.employees is not none %}<span>{{ business.employees | num }} employees{% if business.workers %} · {{ business.workers | num }} workers{% endif %}</span>{% endif %}
+      {% if business.countries_served is not none %}<span>Sells in {{ business.states_served | num }} states · {{ business.countries_served | num }} countries</span>{% endif %}
+      {% if business.annual_report_url %}<span><a class="link" href="{{ business.annual_report_url }}" target="_blank" rel="noopener noreferrer">Annual report (PDF)</a></span>{% endif %}
+    </div>
+    {% if business.activities %}
+    <table class="table table-xs mt-2">
+      <thead><tr><th>Business activity</th><th>Description</th><th class="n">% of turnover</th></tr></thead>
+      <tbody>
+        {% for a in business.activities %}
+        <tr><td class="font-medium">{{ a.main_activity }}</td><td>{{ a.description }}</td><td class="n">{{ a.turnover_pct | num(2) }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+    {% if business.products %}
+    <table class="table table-xs mt-2" id="product-table">
+      <thead><tr><th>Product or service</th><th>NIC code</th><th class="n">% of turnover</th></tr></thead>
+      <tbody>
+        {% for p in business.products %}
+        <tr><td>{{ p.product }}</td><td>{{ p.nic_code or '—' }}</td><td class="n">{{ p.turnover_pct | num(2) }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+    <p class="text-xs text-base-content/60 mt-1">As filed by the company. Brand names are not part of this filing and are not shown yet.</p>
+    {% else %}<p class="text-sm text-base-content/60">This company has not filed a sustainability report, which is where website, business activities and products come from. Only the largest listed companies must file one.</p>{% endif %}
+  </div></div>
+
+  <div class="card bg-base-100 shadow-sm"><div class="card-body p-4">
+    <h2 class="card-title text-sm">Ownership by quarter</h2>
+    {% if ownership %}
+    <table class="table table-xs" id="ownership-history">
+      <thead><tr><th>Quarter</th><th class="n">Promoter</th><th class="n">FII</th><th class="n">DII</th><th class="n">Retail</th></tr></thead>
+      <tbody>
+        {% for q in ownership %}
+        <tr><td>{{ q.period_end | fmt_date }}{% if q.revised %} <span class="badge badge-xs badge-ghost">revised</span>{% endif %}</td><td class="n">{{ q.promoter_pct | num(2) }}</td><td class="n">{{ q.fii_pct | num(2) }}</td><td class="n">{{ q.dii_pct | num(2) }}</td><td class="n">{{ q.retail_pct | num(2) }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="text-sm text-base-content/60">None ingested.</p>{% endif %}
+  </div></div>
+</div>
+
+<div class="card bg-base-100 shadow-sm mb-4">
+  <div class="card-body p-4" id="financials-card">
+    <h2 class="card-title text-sm">Financial results <span class="font-normal text-base-content/60">— as filed to NSE (₹ crore){% if quarters %}; newest quarter {{ quarters[0].period_end | fmt_date }}, {{ 'consolidated' if quarters[0].consolidated else 'standalone' }}{% endif %}</span></h2>
+    {% if quarters %}
+    <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm mb-2" id="ttm-strip">
+      <span>TTM revenue <strong>{{ ttm.revenue | crore }}</strong>{% if ttm.revenue_growth_pct is not none %} <span class="{% if ttm.revenue_growth_pct < 0 %}text-error{% else %}text-success{% endif %}">{{ '%+.1f' % ttm.revenue_growth_pct }}%</span>{% endif %}</span>
+      <span>TTM PAT <strong>{{ ttm.pat | crore }}</strong>{% if ttm.pat_growth_pct is not none %} <span class="{% if ttm.pat_growth_pct < 0 %}text-error{% else %}text-success{% endif %}">{{ '%+.1f' % ttm.pat_growth_pct }}%</span>{% endif %}</span>
+      {% if ttm.ebitda_margin_pct is not none %}<span>EBITDA margin <strong>{{ ttm.ebitda_margin_pct }}%</strong></span>{% endif %}
+      {% if multiples.pe %}<span>P/E <strong>{{ multiples.pe }}</strong></span>{% endif %}
+      {% if multiples.pb %}<span>P/B <strong>{{ multiples.pb }}</strong></span>{% endif %}
+      {% if multiples.ev_ebitda %}<span>EV/EBITDA <strong>{{ multiples.ev_ebitda }}</strong></span>{% endif %}
+      {% if balance_sheet %}<span>Equity <strong>{{ balance_sheet.bs_equity | crore }}</strong></span><span>Borrowings <strong>{{ balance_sheet.bs_borrowings | crore }}</strong></span><span>Cash <strong>{{ balance_sheet.bs_cash | crore }}</strong></span><span class="text-base-content/60">(balance sheet {{ balance_sheet.period_end | fmt_date }})</span>{% endif %}
+    </div>
+    <div class="overflow-x-auto">
+      <table class="table table-xs" id="quarter-table">
+        <thead><tr><th>Quarter</th><th>Basis</th><th class="n">Revenue</th><th class="n">EBITDA</th><th class="n">EBITDA %</th><th class="n">PBT</th><th class="n">PAT</th><th class="n">PAT %</th><th class="n">EPS</th><th class="n">Finance cost</th><th class="n">Depreciation</th><th class="n">Equity</th><th class="n">Borrowings</th><th class="n">CFO (YTD)</th></tr></thead>
+        <tbody>
+          {% for q in quarters %}
+          <tr>
+            <td>{{ q.period_end | fmt_date }}</td>
+            <td class="text-xs text-base-content/60">{{ 'cons' if q.consolidated else 'stand' }}{% if q.is_bank %} · bank{% elif q.is_lender %} · NBFC{% endif %}</td>
+            <td class="n">{{ q.q_revenue | crore }}</td>
+            <td class="n">{{ q.ebitda | crore }}</td>
+            <td class="n">{{ q.ebitda_margin_pct if q.ebitda_margin_pct is not none else '—' }}</td>
+            <td class="n">{{ q.q_pbt | crore }}</td>
+            <td class="n font-medium {% if q.q_pat is not none and q.q_pat < 0 %}text-error{% endif %}">{{ q.q_pat | crore }}</td>
+            <td class="n">{{ q.pat_margin_pct if q.pat_margin_pct is not none else '—' }}</td>
+            <td class="n">{{ q.q_eps_basic | num(2) }}</td>
+            <td class="n">{{ q.q_finance_costs | crore }}</td>
+            <td class="n">{{ q.q_depreciation | crore }}</td>
+            <td class="n">{{ q.bs_equity | crore }}</td>
+            <td class="n">{{ q.bs_borrowings | crore }}</td>
+            <td class="n">{{ q.ytd_cfo | crore }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="text-xs text-base-content/60 mt-1">Quarter figures are the quarter as filed; balance sheet and cash flow appear in the filings that carry them (half-year and year end for most companies). EBITDA = PBT + finance costs + depreciation − other income. Every figure traces to the XBRL filing on NSE.</p>
+    {% else %}<p class="text-sm text-base-content/60">No results filing loaded for this company yet. Results arrive with <code>python ingest.py results</code>, newest quarter first.</p>{% endif %}
+  </div>
+</div>
+
+<div class="card bg-base-100 shadow-sm mb-4">
+  <div class="card-body p-4">
+    <h2 class="card-title text-sm">Bulk and block deals <span class="font-normal text-base-content/60">— newest first</span></h2>
+    {% if deals %}
+    <div class="overflow-y-auto max-h-64">
+      <table class="table table-xs" id="deal-table">
+        <thead><tr><th>Date</th><th>Kind</th><th>Client</th><th>Side</th><th class="n">Quantity</th><th class="n">Price</th><th class="n">Value (₹ cr)</th></tr></thead>
+        <tbody>
+          {% for d in deals %}
+          <tr><td>{{ d.deal_date | fmt_date }}</td><td>{{ d.kind }}</td><td>{{ d.client_name }}</td><td class="{% if d.side == 'BUY' %}text-success{% else %}text-error{% endif %}">{{ d.side }}</td><td class="n">{{ d.quantity | num }}</td><td class="n">{{ d.price | num(2) }}</td><td class="n">{{ (d.quantity * d.price) | crore }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<p class="text-sm text-base-content/60">None in the ingested files.</p>{% endif %}
+  </div>
+</div>
+
+<div class="card bg-base-100 shadow-sm">
+  <div class="card-body p-4">
+    <h2 class="card-title text-sm">Daily prices <span class="font-normal text-base-content/60">— raw, unadjusted; newest first</span></h2>
+    <div class="overflow-x-auto">
+      <table class="table table-sm" id="price-table">
+        <thead>
+          <tr><th>Date</th><th>Series</th><th class="n">Open</th><th class="n">High</th><th class="n">Low</th><th class="n">Close</th><th class="n">Change %</th><th class="n">Volume</th><th class="n">Turnover (₹ cr)</th><th class="n">Trades</th><th class="n">Delivery %</th></tr>
+        </thead>
+        <tbody>
+          {% for p in prices %}
+          {% set change = ((p.close - p.prev_close) / p.prev_close * 100) if p.prev_close else none %}
+          <tr>
+            <td>{{ p.trade_date | fmt_date }}</td>
+            <td>{{ p.series }}{% if p.symbol != security.nse_symbol %} <span class="text-xs text-base-content/60">as {{ p.symbol }}</span>{% endif %}</td>
+            <td class="n">{{ p.open | num(2) }}</td>
+            <td class="n">{{ p.high | num(2) }}</td>
+            <td class="n">{{ p.low | num(2) }}</td>
+            <td class="n font-medium">{{ p.close | num(2) }}</td>
+            <td class="n {% if change is not none and change < 0 %}text-error{% elif change %}text-success{% endif %}">{{ change | num(2) }}</td>
+            <td class="n">{{ p.volume | num }}</td>
+            <td class="n">{{ p.turnover | crore }}</td>
+            <td class="n">{{ p.trades | num }}</td>
+            <td class="n">{{ p.deliv_pct | num(2) }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="11" class="text-base-content/60">No prices ingested for this security yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

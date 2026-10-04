@@ -1,0 +1,3 @@
+{# one signal's stage + direction badges; expects `s` #}
+<span class="badge badge-xs {{ STAGE_CLASS[s.stage] }}">{{ s.stage | lower }}</span>
+<span class="text-xs font-medium {{ DIRECTION_CLASS[s.direction] }}">{{ {'BULL': 'bullish', 'BEAR': 'bearish', 'GATE': 'gate'}[s.direction] }}</span>

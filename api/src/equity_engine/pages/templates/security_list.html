@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Securities · Equity Engine{% endblock %}
+{% block heading %}Securities{% endblock %}
+{% block header_actions %}
+<span class="loading loading-spinner loading-xs htmx-indicator" id="search-busy"></span>
+<form class="flex items-center gap-2" hx-get="/security" hx-trigger="input changed delay:250ms from:[name=q], search from:[name=q], change from:[name=all]" hx-target="#security-rows" hx-indicator="#search-busy" hx-push-url="true">
+  <input type="search" name="q" value="{{ q }}" placeholder="Symbol, name or ISIN" autofocus class="input input-bordered input-sm w-64">
+  <label class="label cursor-pointer gap-1 text-xs"><input type="checkbox" name="all" value="true" class="checkbox checkbox-xs" {% if all %}checked{% endif %}>all NSE</label>
+</form>
+{% endblock %}
+{% block content %}
+<div class="card bg-base-100 shadow-sm">
+  <div class="card-body p-4">
+    <div class="overflow-x-auto">
+      <table class="table table-sm">
+        <thead>
+          <tr><th>Symbol</th><th>Name</th><th>Stance</th><th>Series</th><th>Segment</th><th class="n">Market cap (₹ cr)</th><th class="n">Close</th><th class="n">Delivery %</th><th>Listed</th></tr>
+        </thead>
+        <tbody id="security-rows">{% include "_security_rows.html" %}</tbody>
+      </table>
+    </div>
+    <p class="text-xs text-base-content/60">{% if all %}Every NSE security{% else %}{{ FOCUS_CHOICES[current_focus(request)] }} constituents (tick "all NSE" for the rest){% endif %}; largest market cap first; at most {{ limit }} rows. Market cap is from NSE's daily reports file for each security's newest trade date.</p>
+  </div>
+</div>
+{% endblock %}

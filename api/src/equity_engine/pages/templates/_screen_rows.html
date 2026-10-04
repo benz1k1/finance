@@ -1,0 +1,16 @@
+{% for r in rows %}
+<tr>
+  <td><a class="link link-primary font-medium" href="/security/{{ r.symbol | urlencode }}">{{ r.symbol }}</a></td>
+  <td class="text-xs">{{ r.name }}</td>
+  <td><span class="badge badge-sm {{ STANCE_CLASS[r.stance] }}" {% if r.gate %}title="{{ r.gate }}"{% endif %}>{{ STANCE_LABEL[r.stance] }}</span></td>
+  <td class="text-xs">{{ CONVICTION_LABEL[r.conviction] }}</td>
+  <td class="n text-success">{{ r.bull_score | num(2) }}</td>
+  <td class="n text-error">{{ r.bear_score | num(2) }}</td>
+  <td class="text-xs">{% for e in r.engines %}<span class="badge badge-xs badge-ghost mr-1">{{ e | replace('_', ' ') }}</span>{% endfor %}</td>
+  <td class="n">{{ r.market_cap | crore }}</td>
+  <td class="n">{{ r.close | num(2) }}</td>
+  <td class="text-xs">{{ (r.indices or []) | join(', ') }}</td>
+</tr>
+{% else %}
+<tr><td colspan="10" class="text-base-content/60">Nothing matches this screen.</td></tr>
+{% endfor %}

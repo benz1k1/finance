@@ -1,0 +1,16 @@
+{% set icons = {'DOCUMENT': 'mdi-file-document-outline', 'RESULTS': 'mdi-chart-bar', 'ACTION': 'mdi-calendar-star', 'MEETING': 'mdi-account-group-outline', 'RATING': 'mdi-shield-check-outline', 'DEAL': 'mdi-swap-horizontal', 'STANCE': 'mdi-compass-outline'} %}
+{% for e in entries %}
+<li>
+  {% if not loop.first %}<hr>{% endif %}
+  <div class="timeline-start text-xs text-base-content/60 whitespace-nowrap">{{ e.at | fmt_date }}</div>
+  <div class="timeline-middle"><i class="mdi {{ icons[e.kind] }} text-sm"></i></div>
+  <div class="timeline-end timeline-box text-sm py-1 px-2 max-w-3xl">
+    <span class="badge badge-xs badge-ghost mr-1">{{ e.kind | lower }}{% if e.subkind %} · {{ e.subkind | lower | replace('_', ' ') }}{% endif %}</span>
+    {% if e.link %}<a class="link link-hover font-medium" href="{{ e.link }}" target="_blank" rel="noopener noreferrer">{{ e.title }}</a>{% else %}<span class="font-medium">{{ e.title }}</span>{% endif %}
+    {% if e.detail %}<div class="text-xs text-base-content/70">{{ e.detail }}</div>{% endif %}
+  </div>
+  {% if not loop.last %}<hr>{% endif %}
+</li>
+{% else %}
+<li><div class="timeline-end text-sm text-base-content/60">Nothing recorded for this company yet.</div></li>
+{% endfor %}

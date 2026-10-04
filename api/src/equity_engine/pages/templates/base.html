@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="pastel">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>{% block title %}Equity Engine{% endblock %}</title>
+  <link rel="stylesheet" href="/static/mdi/css/materialdesignicons.min.css">
+  <link rel="stylesheet" href="/static/daisyui.full.min.css">
+  <script src="/static/tailwind.js"></script>
+  <script src="/static/htmx.min.js"></script>
+  <script src="/static/alpine.min.js" defer></script>
+  <style>
+    [x-cloak] { display: none !important; }
+    .htmx-indicator { opacity: 0; transition: opacity 150ms ease-in; }
+    .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { opacity: 1; }
+    td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body class="min-h-screen bg-base-200" x-data="{ sidebarCollapsed: false }">
+<div class="flex min-h-screen">
+  <nav class="flex flex-col flex-shrink-0 bg-base-100 border-r border-base-300 transition-all duration-200"
+       :class="sidebarCollapsed ? 'w-14' : 'w-56'">
+    <div class="flex items-center justify-between gap-2 px-3 py-2">
+      <a href="/" class="flex items-center gap-2 overflow-hidden">
+        <i class="mdi mdi-chart-timeline-variant text-primary text-lg"></i>
+        <span x-show="!sidebarCollapsed" class="font-bold text-sm whitespace-nowrap">Equity Engine</span>
+      </a>
+      <button type="button" class="btn btn-ghost btn-xs px-1" @click="sidebarCollapsed = !sidebarCollapsed" aria-label="Toggle sidebar">
+        <i class="mdi mdi-chevron-left" :style="sidebarCollapsed ? 'transform: rotate(180deg)' : ''"></i>
+      </button>
+    </div>
+    <div class="divider my-0"></div>
+    {% set focus = current_focus(request) %}
+    <div class="join px-2 py-1 w-full" id="focus-toggle" x-show="!sidebarCollapsed" title="Focus: which index the pages show. Engines always run over the Nifty 500.">
+      {% for code, label in FOCUS_CHOICES.items() %}
+      <a href="/focus/{{ code }}?next={{ request.url.path | urlencode }}{% if request.url.query %}{{ ('?' ~ request.url.query) | urlencode }}{% endif %}" class="join-item btn btn-xs flex-1 {% if code == focus %}btn-primary{% else %}btn-ghost{% endif %}">{{ label }}</a>
+      {% endfor %}
+    </div>
+    <ul class="menu menu-sm flex-nowrap flex-grow overflow-y-auto overflow-x-hidden py-2" :class="sidebarCollapsed ? 'px-0' : 'px-2'">
+      {% for item in nav_items(request) %}
+      {% if loop.changed(item.group) %}
+      <li class="menu-title pt-3" x-show="!sidebarCollapsed"><span class="whitespace-nowrap">{{ item.group }}</span></li>
+      {% endif %}
+      <li>
+        <a href="{{ item.path }}" title="{{ item.label }}" class="{% if item.active %}active{% endif %}" :class="sidebarCollapsed ? 'justify-center px-0' : ''">
+          <i class="mdi {{ item.icon }}"></i>
+          <span x-show="!sidebarCollapsed" class="whitespace-nowrap">{{ item.label }}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </nav>
+
+  <div class="flex flex-col flex-grow min-w-0">
+    <header class="flex items-center gap-3 px-4 py-2 bg-base-100 border-b border-base-300">
+      <h1 class="text-base font-semibold truncate">{% block heading %}{% endblock %}</h1>
+      <div class="ml-auto flex items-center gap-2">{% block header_actions %}{% endblock %}</div>
+    </header>
+    <main class="flex-grow p-4 min-w-0">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+</body>
+</html>

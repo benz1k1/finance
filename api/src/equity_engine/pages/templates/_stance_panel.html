@@ -1,0 +1,78 @@
+{# The company stance panel (spec §118). Expects: run, stance, fired, for_signals, against_signals, engine_groups, stance_history #}
+<div class="card bg-base-100 shadow-sm mb-4" id="stance-panel">
+  <div class="card-body p-4">
+    {% if not run %}
+    <h2 class="card-title text-sm">Engines</h2>
+    <p class="text-sm text-base-content/60">No engine run yet — run <code>python ingest.py signals</code>. The grid below shows every engine and what it is waiting for.</p>
+    {% elif stance %}
+    <div class="flex flex-wrap items-center gap-3">
+      <div>
+        <div class="text-xs uppercase tracking-wide text-base-content/60">Signals lean</div>
+        <div class="flex items-center gap-2">
+          <span class="badge badge-lg {{ STANCE_CLASS[stance.stance] }}" id="stance-badge">{{ STANCE_LABEL[stance.stance] }}</span>
+          <span class="text-sm">{{ CONVICTION_LABEL[stance.conviction] }}{% if stance.conviction not in ('NONE',) %} conviction{% endif %}</span>
+        </div>
+      </div>
+      <div class="flex-grow min-w-[16rem]">
+        <div class="text-xs text-base-content/60 flex justify-between"><span>{{ stance.bull_count }} bullish · {{ stance.bull_score | num(2) }} pts</span><span>{{ stance.bear_count }} bearish · {{ stance.bear_score | num(2) }} pts</span></div>
+        {% set total = (stance.bull_score + stance.bear_score) %}
+        <div class="flex h-3 w-full overflow-hidden rounded bg-base-200 {% if stance.stance == 'AVOID' %}opacity-40{% endif %}" title="weighted bullish points (left) against bearish (right)">
+          {% if total > 0 %}<div class="bg-success" style="width: {{ 100 * stance.bull_score / total }}%"></div><div class="bg-info" style="width: {{ 100 * stance.bear_score / total }}%"></div>{% endif %}
+        </div>
+        <div class="text-xs text-base-content/60 mt-1">6–12 month horizon · stance v{{ stance.version }} · run of {{ run.as_of | fmt_date }} · weights: confirmed 1.0, emerging 0.6, early 0.3</div>
+      </div>
+    </div>
+    {% if stance.stance == 'AVOID' %}
+    <div class="alert alert-warning mt-3 text-sm" id="stance-gate"><i class="mdi mdi-cancel"></i><span><strong>Gate:</strong> {{ stance.gate }}. The tally is shown for information only; no stance is taken while a gate is open.</span></div>
+    {% endif %}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+      <div>
+        <h3 class="text-xs font-semibold uppercase tracking-wide text-success mb-1">Strongest for</h3>
+        {% for s in for_signals %}
+        <div class="text-sm mb-1"><a class="link link-hover font-medium" href="/engine/{{ s.engine_key }}">{{ s.engine_name }}</a> {% include "_signal_badges.html" %}<br><span class="text-xs">{{ s.headline }}</span>{% if s.percentile is not none %} <span class="text-xs text-base-content/60">· {{ s.percentile | num(0) }}th pctile</span>{% endif %}</div>
+        {% else %}<p class="text-sm text-base-content/60">Nothing bullish fired.</p>{% endfor %}
+      </div>
+      <div>
+        <h3 class="text-xs font-semibold uppercase tracking-wide text-info mb-1">Strongest against</h3>
+        {% for s in against_signals %}
+        <div class="text-sm mb-1"><a class="link link-hover font-medium" href="/engine/{{ s.engine_key }}">{{ s.engine_name }}</a> {% include "_signal_badges.html" %}<br><span class="text-xs">{{ s.headline }}</span></div>
+        {% else %}<p class="text-sm text-base-content/60">Nothing bearish fired.</p>{% endfor %}
+      </div>
+    </div>
+    {% if fired %}
+    <div class="mt-3">
+      <h3 class="text-xs font-semibold uppercase tracking-wide text-base-content/60 mb-1">What would change this</h3>
+      <ul class="text-xs list-disc pl-5">{% for s in fired %}<li><span class="font-medium">{{ s.engine_name }}:</span> {{ s.invalidation }}</li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+    {% else %}
+    <h2 class="card-title text-sm">Stance</h2>
+    <p class="text-sm text-base-content/60">Not in the run of {{ run.as_of | fmt_date }} — no price on that date (not traded, or not in the EQ/SM series).</p>
+    {% endif %}
+
+    <div class="divider my-2"></div>
+    <h3 class="text-xs font-semibold uppercase tracking-wide text-base-content/60 mb-2">All engines</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" id="engine-grid">
+      {% for group, items in engine_groups.items() %}
+      <div>
+        <div class="text-xs font-medium mb-1">{{ group | replace('_', ' ') | capitalize }}</div>
+        <div class="flex flex-col gap-1">
+          {% for e in items %}
+          <div class="flex items-center justify-between gap-2 rounded px-2 py-1 text-xs {% if e.fired %}bg-base-200{% else %}bg-base-100 border border-base-300{% endif %}" title="{{ e.description }}">
+            <a class="link link-hover truncate" href="/engine/{{ e.engine_key }}">{{ e.name }}</a>
+            {% if e.fired %}{% set s = e.fired[0] %}<span class="whitespace-nowrap"><span class="{{ DIRECTION_CLASS[s.direction] }} font-medium">{{ s.signal_type | replace('_', ' ') | lower }}</span> <span class="badge badge-xs {{ STAGE_CLASS[s.stage] }}">{{ s.stage | lower }}</span></span>
+            {% elif e.status == 'LIVE' %}<span class="text-base-content/50 whitespace-nowrap">no signal</span>
+            {% elif e.status == 'BLOCKED' %}<span class="text-base-content/50 whitespace-nowrap" title="needs {{ e.missing | join(', ') }}">no data: {{ e.missing | join(', ') }}</span>
+            {% else %}<span class="text-base-content/50 whitespace-nowrap">not built</span>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% if stance_history | length > 1 %}
+    <div class="mt-3 text-xs text-base-content/60 flex flex-wrap items-center gap-1"><span class="mr-1">Stance history:</span>{% for h in stance_history %}<span class="badge badge-xs {{ STANCE_CLASS[h.stance] }}" title="{{ CONVICTION_LABEL[h.conviction] }}{% if h.gate %} — {{ h.gate }}{% endif %}">{{ h.as_of | fmt_date }} · {{ STANCE_LABEL[h.stance] }}</span>{% endfor %}</div>
+    {% endif %}
+    <p class="text-xs text-base-content/60 mt-2">A transparent tally of what the engines measured, not advice (spec §39, §52). The investment decision remains with the investor.</p>
+  </div>
+</div>

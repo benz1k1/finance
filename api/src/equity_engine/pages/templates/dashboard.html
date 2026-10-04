@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Data health · Equity Engine{% endblock %}
+{% block heading %}Data health{% endblock %}
+{% block content %}
+{% set c = summary.counts %}
+<div class="stats stats-vertical lg:stats-horizontal shadow-sm bg-base-100 w-full mb-4">
+  <div class="stat">
+    <div class="stat-title">Securities</div>
+    <div class="stat-value text-2xl" id="stat-securities">{{ c.security | num }}</div>
+    <div class="stat-desc"><a class="link link-hover" href="/exclusion">{{ excluded | num }} excluded</a></div>
+  </div>
+  <div class="stat">
+    <div class="stat-title">Price rows</div>
+    <div class="stat-value text-2xl" id="stat-price-rows">{{ c.price_daily | num }}</div>
+    <div class="stat-desc">{{ summary.prices.trade_dates | num }} trade dates</div>
+  </div>
+  <div class="stat">
+    <div class="stat-title">Latest trade date</div>
+    <div class="stat-value text-2xl" id="stat-latest-date">{{ summary.prices.last_trade_date | fmt_date }}</div>
+    <div class="stat-desc">from {{ summary.prices.first_trade_date | fmt_date }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-title">That day</div>
+    <div class="stat-value text-2xl">₹{{ summary.latest.turnover | crore }} cr</div>
+    <div class="stat-desc">{{ summary.latest.priced | num }} securities · {{ summary.latest.with_delivery | num }} with delivery · {{ summary.latest.trades | num }} trades</div>
+  </div>
+  <div class="stat">
+    <div class="stat-title">Cached files</div>
+    <div class="stat-value text-2xl">{{ c.raw_file | num }}</div>
+    <div class="stat-desc">kept on disk, never re-downloaded</div>
+  </div>
+</div>
+
+<div class="card bg-base-100 shadow-sm">
+  <div class="card-body p-4">
+    <h2 class="card-title text-sm">Sources</h2>
+    <div class="overflow-x-auto">
+      <table class="table table-sm" id="source-table">
+        <thead>
+          <tr><th>State</th><th>Source</th><th>Kind</th><th class="n">Files</th><th>First</th><th>Last</th><th class="n">Rows in last file</th><th class="n">Holidays</th><th>Last fetched</th></tr>
+        </thead>
+        <tbody>
+          {% for s in sources %}
+          <tr>
+            <td><span class="badge badge-sm {% if s.state == 'OK' %}badge-success{% elif s.state == 'STALE' %}badge-warning{% else %}badge-ghost{% endif %}">{{ s.state }}</span></td>
+            <td><div class="font-medium">{{ s.name }}</div><div class="text-xs text-base-content/60">{{ s.source_id }} · {{ s.cadence }}</div></td>
+            <td>{{ s.kind }}</td>
+            <td class="n">{{ s.files | num }}</td>
+            <td>{{ s.first_date | fmt_date }}</td>
+            <td>{{ s.last_date | fmt_date }}</td>
+            <td class="n">{{ s.last_rows | num }}</td>
+            <td class="n">{{ s.no_data_dates | num }}</td>
+            <td>{{ s.last_fetched_at | fmt_dt }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="text-xs text-base-content/60">A snapshot source is a current-only file at the exchange, so its history starts the day ingestion starts. "Holidays" counts weekdays the exchange has no file for.</p>
+  </div>
+</div>
+
+<div class="card bg-base-100 shadow-sm mt-4">
+  <div class="card-body p-4">
+    <h2 class="card-title text-sm">Tables</h2>
+    <div class="flex flex-wrap gap-2">
+      {% for table, n in c.items() %}<span class="badge badge-outline">{{ table }} {{ n | num }}</span>{% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

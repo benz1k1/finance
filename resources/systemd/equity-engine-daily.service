@@ -1,0 +1,11 @@
+[Unit]
+Description=Equity Engine daily ingest: prices, snapshots, filings, engines, outcomes
+After=network-online.target postgresql.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/workspace/benz3k3/finance
+Environment=EQUITY_ENGINE_ENV=dev
+ExecStart=%h/workspace/benz3k3/finance/api/.venv/bin/python %h/workspace/benz3k3/finance/ingest.py daily
+ExecStartPost=%h/workspace/benz3k3/finance/api/.venv/bin/python %h/workspace/benz3k3/finance/ingest.py outcomes
+TimeoutStartSec=3h

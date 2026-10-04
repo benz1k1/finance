@@ -1,0 +1,80 @@
+[project]
+name = "equity-engine"
+version = "0.1.0"
+description = "Indian Equity Opportunity Engine — NSE data ingestion, point-in-time store and research pages"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.12",
+    "granian[reload]>=2.0",
+    "jinja2>=3.1.6",
+    "pydantic>=2.11.0",
+    "pyyaml>=6.0.2",
+    "loguru>=0.7.3",
+    "orjson>=3.10.0",
+    "httpx>=0.28.0",
+    "cryptography>=44.0.2",
+    "sqlalchemy>=2.0.40",
+    "psycopg[binary]>=3.2.7",
+    "polars>=1.27.1",
+    "nanoid>=2.0.0",
+    "lr_lib>=0.2.7",
+    "pypdf>=5.0",
+    "anthropic>=1.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0",
+    "ruff>=0.11.7",
+    "mypy>=1.15.0",
+    "types-pyyaml>=6.0.12",
+]
+
+# lr_lib is a path source, the way oraceuticmd and loylty_program consume it (env YAML helpers,
+# Fernet-encrypted database password).
+[tool.uv.sources]
+lr_lib = { path = "../../../lr/lr_lib" }
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = {find = {where = ["src"]}}
+include-package-data = true
+zip-safe = false
+
+# Runtime data read off disk: templates and vendored static assets. Named here AND in MANIFEST.in;
+# a wheel missing either starts and dies. static/mdi/{css,fonts} is nested.
+[tool.setuptools.package-data]
+"equity_engine.pages" = [
+    "templates/*.html",
+    "static/*.js",
+    "static/*.css",
+    "static/*.md",
+    "static/mdi/css/*.css",
+    "static/mdi/fonts/*",
+]
+
+[tool.setuptools.exclude-package-data]
+"*" = ["*.py"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+warn_unused_ignores = true
+mypy_path = "src"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

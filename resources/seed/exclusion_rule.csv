@@ -1,0 +1,7 @@
+kind,value,reason,valid_from
+NSE_SERIES,BE,Trade-for-trade,2019-01-01
+NSE_SERIES,BZ,Trade-for-trade for non-compliance,2019-01-01
+NSE_SERIES,ST,SME trade-for-trade,2019-01-01
+NSE_SERIES,SZ,SME trade-for-trade for non-compliance,2019-01-01
+NSE_SURVEILLANCE,ESM,Enhanced Surveillance Measure,2019-01-01
+NSE_SURVEILLANCE,GSM,Graded Surveillance Measure,2019-01-01

@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Error · Equity Engine{% endblock %}
+{% block heading %}Something went wrong{% endblock %}
+{% block content %}
+<div class="alert alert-error"><i class="mdi mdi-alert-circle-outline"></i><span>{{ message }}</span></div>
+<a href="/" class="btn btn-sm mt-4">Back to data health</a>
+{% endblock %}

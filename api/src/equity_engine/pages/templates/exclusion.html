@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Exclusions · Equity Engine{% endblock %}
+{% block heading %}Hard exclusions — {{ day | fmt_date }}{% endblock %}
+{% block content %}
+<div class="card bg-base-100 shadow-sm mb-4">
+  <div class="card-body p-4">
+    <h2 class="card-title text-sm">By rule</h2>
+    <table class="table table-sm w-auto" id="rule-table">
+      <thead><tr><th>Reason</th><th class="n">Securities</th></tr></thead>
+      <tbody>
+        {% for r in counts %}
+        <tr><td>{{ r.reason }}</td><td class="n">{{ r.securities | num }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="text-xs text-base-content/60">These securities are removed before any engine runs (spec §69.1). A security can match several rules; it is counted under each.</p>
+  </div>
+</div>
+
+<div class="card bg-base-100 shadow-sm">
+  <div class="card-body p-4">
+    <h2 class="card-title text-sm"><span id="excluded-count">{{ excluded | length | num }}</span> excluded securities</h2>
+    <div class="overflow-x-auto">
+      <table class="table table-sm">
+        <thead><tr><th>Symbol</th><th>Name</th><th>ISIN</th><th>Why</th></tr></thead>
+        <tbody>
+          {% for e in excluded %}
+          <tr>
+            <td><a class="link link-primary" href="/security/{{ e.symbol | urlencode }}">{{ e.symbol }}</a></td>
+            <td>{{ e.name }}</td>
+            <td>{{ e.isin }}</td>
+            <td>{% for label in e.labels %}<span class="badge badge-sm badge-outline mr-1">{{ label }}</span>{% endfor %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

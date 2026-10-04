@@ -1,0 +1,15 @@
+{% for s in securities %}
+<tr>
+  <td><a class="link link-primary font-medium" href="/security/{{ s.nse_symbol | urlencode }}">{{ s.nse_symbol }}</a></td>
+  <td>{{ s.name }}</td>
+  <td>{% set st = stances.get(s.nse_symbol) %}{% if st %}<span class="badge badge-sm {{ STANCE_CLASS[st.stance] }}" title="{{ CONVICTION_LABEL[st.conviction] }}{% if st.gate %} — {{ st.gate }}{% endif %}">{{ STANCE_LABEL[st.stance] }}</span>{% else %}<span class="text-xs text-base-content/40">—</span>{% endif %}</td>
+  <td>{{ s.series }}</td>
+  <td>{{ s.segment }}</td>
+  <td class="n">{{ s.market_cap | crore }}</td>
+  <td class="n">{{ s.close | num(2) }}</td>
+  <td class="n">{{ s.deliv_pct | num(2) }}</td>
+  <td>{{ s.listing_date | fmt_date }}</td>
+</tr>
+{% else %}
+<tr><td colspan="9" class="text-base-content/60">No security matches “{{ q }}”.</td></tr>
+{% endfor %}

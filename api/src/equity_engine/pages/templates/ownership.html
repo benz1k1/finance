@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Ownership · Equity Engine{% endblock %}
+{% block heading %}Ownership — newest filing per company{% endblock %}
+{% block content %}
+{% set columns = [("promoter_pct", "Promoter"), ("fii_pct", "FII"), ("dii_pct", "DII"), ("mutual_fund_pct", "Mutual funds"), ("insurance_pct", "Insurance"), ("retail_pct", "Retail")] %}
+<div class="card bg-base-100 shadow-sm">
+  <div class="card-body p-4">
+    <div class="overflow-x-auto">
+      <table class="table table-sm" id="ownership-table">
+        <thead>
+          <tr>
+            <th>Symbol</th><th>Name</th><th>Stance</th><th>Quarter</th>
+            {% for key, label in columns %}
+            <th class="n"><a class="link link-hover {% if key == sort %}font-bold text-primary{% endif %}" href="/ownership?sort={{ key }}">{{ label }} %{% if key == sort %} ↓{% endif %}</a></th>
+            {% endfor %}
+            <th class="n">Shareholders</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr>
+            <td><a class="link link-primary font-medium" href="/security/{{ r.symbol | urlencode }}">{{ r.symbol }}</a></td>
+            <td>{{ r.name }}</td>
+            <td>{% set st = stances.get(r.symbol) %}{% if st %}<span class="badge badge-sm {{ STANCE_CLASS[st.stance] }}" title="{{ CONVICTION_LABEL[st.conviction] }}">{{ STANCE_LABEL[st.stance] }}</span>{% else %}<span class="text-xs text-base-content/40">—</span>{% endif %}</td>
+            <td>{{ r.period_end | fmt_date }}</td>
+            {% for key, label in columns %}<td class="n {% if key == sort %}font-medium{% endif %}">{{ r[key] | num(2) }}</td>{% endfor %}
+            <td class="n">{{ r.total_shareholders | num }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="11" class="text-base-content/60">No shareholding filings ingested yet. Run: python ingest.py ownership --from 2026-07 --to 2026-09</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="text-xs text-base-content/60">Top {{ limit }} by the highlighted column. Percentages are of total shares, from each company's newest shareholding-pattern filing. FII is all foreign institutions; DII is all domestic institutions (mutual funds, insurers, banks, pension funds, AIFs).</p>
+  </div>
+</div>
+{% endblock %}
