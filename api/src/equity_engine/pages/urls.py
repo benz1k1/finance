@@ -7,7 +7,17 @@ from typing import Any
 from fastapi import FastAPI
 
 from equity_engine.pages import focus
-from equity_engine.pages.controller import api, dashboard, engines, exclusions, securities, signals
+from equity_engine.pages.controller import (
+    api,
+    clients,
+    dashboard,
+    engines,
+    exclusions,
+    glossary,
+    market,
+    securities,
+    signals,
+)
 
 ROUTES: list[tuple[str, Callable[..., Any], list[str]]] = [
     ("/", signals.radar_page, ["GET"]),
@@ -17,11 +27,19 @@ ROUTES: list[tuple[str, Callable[..., Any], list[str]]] = [
     ("/engine", engines.engine_list, ["GET"]),
     ("/engine/{key}", engines.engine_page, ["GET"]),
     ("/screen", signals.screen_page, ["GET"]),
-    ("/security", securities.security_list, ["GET"]),
-    ("/security/{symbol}", securities.security_page, ["GET"]),
-    ("/security/{symbol}/timeline", securities.timeline_page, ["GET"]),
+    ("/equities", securities.security_list, ["GET"]),
+    ("/equities/{symbol}", securities.security_page, ["GET"]),
+    ("/equities/{symbol}/timeline", securities.timeline_page, ["GET"]),
+    ("/equities/{symbol}/chart", securities.price_chart_fragment, ["GET"]),
+    # the pages were /security until 2026-10-04; old links keep working
+    ("/security", securities.redirect_to_equities, ["GET"]),
+    ("/security/{rest:path}", securities.redirect_to_equities, ["GET"]),
     ("/ownership", securities.ownership_page, ["GET"]),
+    ("/client", clients.client_list, ["GET"]),
+    ("/client/{name:path}", clients.client_page, ["GET"]),
     ("/exclusion", exclusions.exclusion_page, ["GET"]),
+    ("/glossary", glossary.glossary_page, ["GET"]),
+    ("/market", market.market_page, ["GET"]),
     ("/api/health", api.health, ["GET"]),
     ("/api/source", api.sources, ["GET"]),
     ("/api/security", api.security_search, ["GET"]),

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Terminology · Equity Engine{% endblock %}
+{% block heading %}Terminology — {{ count }} terms{% endblock %}
+{% block header_actions %}
+<label class="input input-sm input-bordered flex items-center gap-2 w-72">
+  <i class="mdi mdi-magnify text-base-content/60"></i>
+  <input type="search" id="glossary-search" class="grow" placeholder="Filter terms…" autocomplete="off" autofocus>
+</label>
+{% endblock %}
+{% block content %}
+<div id="glossary">
+  <script>
+    // The search box is in the page header, outside any Alpine scope, so a plain listener drives the filter.
+    document.addEventListener('DOMContentLoaded', () => {
+      const box = document.getElementById('glossary-search');
+      const count = document.getElementById('glossary-count');
+      const apply = () => {
+        const needle = box.value.trim().toLowerCase();
+        let shown = 0;
+        document.querySelectorAll('[data-term]').forEach(el => {
+          const hit = needle === '' || el.dataset.term.includes(needle);
+          el.hidden = !hit;
+          if (hit) shown += 1;
+        });
+        document.querySelectorAll('[data-group]').forEach(g => { g.hidden = needle !== '' && !g.querySelector('[data-term]:not([hidden])'); });
+        count.textContent = needle === '' ? '' : `${shown} match${shown === 1 ? '' : 'es'}`;
+      };
+      box.addEventListener('input', apply);
+      box.addEventListener('search', apply);
+    });
+  </script>
+  <div class="flex flex-wrap gap-1 mb-4" id="glossary-groups">
+    {% for group, terms in groups %}<a class="badge badge-outline hover:badge-primary" href="#{{ group | lower | replace(' ', '-') | replace('/', '') }}">{{ group }} <span class="opacity-60 ml-1">{{ terms | length }}</span></a>{% endfor %}
+  </div>
+  <p class="text-xs text-base-content/60 mb-4"><span id="glossary-count" class="font-medium mr-2"></span>Every term the engines and pages print, with a worked example in the units the app shows. Where an engine uses the term it is linked; the engine page carries its live hit rate.</p>
+  {% for group, terms in groups %}
+  <section data-group id="{{ group | lower | replace(' ', '-') | replace('/', '') }}" class="mb-6">
+    <h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/70 mb-2">{{ group }}</h2>
+    <div class="grid gap-3 md:grid-cols-2">
+      {% for t in terms %}
+      <div class="card bg-base-100 shadow-sm" data-term="{{ (t.term ~ ' ' ~ (t.aliases | join(' ')) ~ ' ' ~ t.meaning ~ ' ' ~ (t.engines | join(' '))) | lower }}">
+        <div class="card-body p-4 gap-2">
+          <h3 class="font-semibold text-sm">{{ t.term }}{% if t.aliases %} <span class="text-xs font-normal text-base-content/50">also: {{ t.aliases | join(', ') }}</span>{% endif %}</h3>
+          <p class="text-sm">{{ t.meaning }}</p>
+          <div class="text-sm bg-base-200 rounded px-2 py-1"><span class="text-xs uppercase tracking-wide text-base-content/60 mr-1">Example</span>{% for line in t.example.split('\n') %}{% if loop.first %}{{ line }}{% else %}<div class="mt-1">{{ line }}</div>{% endif %}{% endfor %}</div>
+          {% if t.engines %}<div class="flex flex-wrap gap-1">{% for key in t.engines %}<a class="badge badge-xs badge-ghost hover:badge-primary" href="/engine/{{ key }}">{{ key | replace('_', ' ') }}</a>{% endfor %}</div>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+{# one inline-SVG line chart; expects `chart` (pages.charts.Chart) and `chart_id` #}
+<svg viewBox="0 0 {{ chart.width }} {{ chart.height }}" class="w-full h-auto line-chart" id="{{ chart_id }}" role="img" aria-label="{{ chart_label }}">
+  <style>
+    /* hover one series: it thickens, the rest fade; the wide transparent twin makes thin lines easy to catch */
+    .line-chart g.series { transition: opacity 120ms ease; }
+    .line-chart:has(g.series:hover) g.series:not(:hover) { opacity: 0.2; }
+    .line-chart g.series:hover path.line { stroke-width: 3.5; }
+    .line-chart g.series:hover text { font-weight: 600; }
+  </style>
+  {% for y, label in chart.y_ticks %}<line x1="{{ chart.plot.x0 }}" x2="{{ chart.plot.x1 }}" y1="{{ y }}" y2="{{ y }}" stroke="currentColor" stroke-opacity="0.08"></line><text x="{{ chart.plot.x0 - 6 }}" y="{{ y + 3 }}" text-anchor="end" font-size="10" fill="currentColor" fill-opacity="0.6">{{ label }}</text>{% endfor %}
+  {% if chart.zero_y is not none %}<line x1="{{ chart.plot.x0 }}" x2="{{ chart.plot.x1 }}" y1="{{ chart.zero_y }}" y2="{{ chart.zero_y }}" stroke="currentColor" stroke-opacity="0.45"></line>{% endif %}
+  {% for x, label in chart.x_ticks %}<line x1="{{ x }}" x2="{{ x }}" y1="{{ chart.plot.y0 }}" y2="{{ chart.plot.y1 }}" stroke="currentColor" stroke-opacity="0.06"></line><text x="{{ x }}" y="{{ chart.plot.y1 + 16 }}" text-anchor="middle" font-size="10" fill="currentColor" fill-opacity="0.6">{{ label }}</text>{% endfor %}
+  {% for s in chart.series %}
+  <g class="series" data-series="{{ s.name }}">
+    <title>{{ s.name }}: latest {{ '%+.1f' % s.last }}</title>
+    <path d="{{ s.path }}" fill="none" stroke="transparent" stroke-width="14" stroke-linejoin="round" stroke-linecap="round"></path>
+    <path class="line" d="{{ s.path }}" fill="none" stroke="{{ s.color }}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>
+    <circle cx="{{ s.end_x }}" cy="{{ s.end_y }}" r="3" fill="{{ s.color }}"></circle>
+    <text x="{{ s.end_x + 6 }}" y="{{ s.end_y + 3 }}" font-size="10" fill="currentColor"><tspan fill="{{ s.color }}">●</tspan> {{ s.name | truncate(22, true, '…') }} {{ '%+.1f' % s.last }}</text>
+  </g>
+  {% endfor %}
+  {% if not chart.series %}<text x="{{ chart.width / 2 }}" y="{{ chart.height / 2 }}" text-anchor="middle" font-size="12" fill="currentColor" fill-opacity="0.6">No data in this range</text>{% endif %}
+</svg>

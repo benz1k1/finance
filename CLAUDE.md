@@ -41,6 +41,8 @@ python ingest.py ownership --from 2026-07 --to 2026-09 --workers 5 --interval 0.
 python ingest.py profiles --workers 5 --interval 0.35       # website, activities, products (BRSR)
 python ingest.py rebuild                 # ingest everything on disk; no network
 python ingest.py retune                  # the stance's engine weights against the backtest ledger (train < 2025, held out after)
+python ingest.py global                  # five global index histories (levels only, Yahoo chart API, daily from 1990)
+python ingest.py clients-meta            # one-time Wikipedia lookup of deal counterparties (resumable; --shard is suspect)
 python ingest.py status
 
 cd api && uv run ruff check --fix . && uv run ruff format . && uv run mypy src/

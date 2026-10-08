@@ -536,3 +536,13 @@ CREATE INDEX index_membership_isin_idx ON index_membership (index_code, isin, as
 
 -- Rules (exclusion_rule) and everything the engines write live in the app schema:
 -- schema/app_schema.sql. This file holds exchange data only and is never dropped by load_data.py.
+
+-- ------------------------------------------------------------------ global indexes (spec §120)
+-- Index levels only (US, Japan, Germany, Euro area, China); no foreign stock prices.
+CREATE TABLE IF NOT EXISTS global_index_daily (
+    index_code  text NOT NULL,
+    trade_date  date NOT NULL,
+    close       numeric(14, 4) NOT NULL,
+    fetched_at  timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (index_code, trade_date)
+);

@@ -19,7 +19,7 @@
         <tbody>
           {% for r in rows %}
           <tr>
-            <td><a class="link link-primary font-medium" href="/security/{{ r.symbol | urlencode }}">{{ r.symbol }}</a></td>
+            <td><a class="link link-primary font-medium" href="/equities/{{ r.symbol | urlencode }}">{{ r.symbol }}</a></td>
             <td>{{ r.name }}</td>
             <td>{% set st = stances.get(r.symbol) %}{% if st %}<span class="badge badge-sm {{ STANCE_CLASS[st.stance] }}" title="{{ CONVICTION_LABEL[st.conviction] }}">{{ STANCE_LABEL[st.stance] }}</span>{% else %}<span class="text-xs text-base-content/40">—</span>{% endif %}</td>
             <td>{{ r.period_end | fmt_date }}</td>

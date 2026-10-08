@@ -7,6 +7,7 @@ from typing import Any
 
 from fastapi.templating import Jinja2Templates
 
+from equity_engine.pages.charts import donut_dasharray
 from equity_engine.pages.focus import current as current_focus
 from equity_engine.pages.nav import nav_items
 from equity_engine.service.stance import CONVICTION_LABEL, STANCE_LABEL
@@ -16,18 +17,20 @@ _TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templ
 
 templates = Jinja2Templates(directory=_TEMPLATES_DIR)
 templates.env.globals["nav_items"] = nav_items
+templates.env.globals["donut_dasharray"] = donut_dasharray
 templates.env.globals["current_focus"] = current_focus
 templates.env.globals["FOCUS_CHOICES"] = FOCUS_CHOICES
 templates.env.globals["STANCE_LABEL"] = STANCE_LABEL
 templates.env.globals["CONVICTION_LABEL"] = CONVICTION_LABEL
 # daisyUI badge colours per stance / direction / stage, so every page paints them the same way.
-# Stance: long = green, short = blue, avoid = grey (user rule, 2026-10-04); red is kept for risk.
+# Stance: buy = green, sell = red, avoid = grey (user rule, 2026-10-04, superseding the earlier
+# blue-for-short rule). Negative numbers, lagging and risk are red everywhere.
 templates.env.globals["STANCE_CLASS"] = {
     "LONG": "badge-success",
     "LEAN_LONG": "badge-success badge-outline",
     "NEUTRAL": "badge-ghost",
-    "LEAN_SHORT": "badge-info badge-outline",
-    "SHORT": "badge-info",
+    "LEAN_SHORT": "badge-error badge-outline",
+    "SHORT": "badge-error",
     "AVOID": "badge-neutral",
 }
 templates.env.globals["DIRECTION_CLASS"] = {
@@ -95,3 +98,26 @@ templates.env.filters["fmt_date"] = format_date
 templates.env.filters["fmt_dt"] = format_datetime
 templates.env.filters["num"] = indian_number
 templates.env.filters["crore"] = crore
+
+
+def signed(value: Any, decimals: int = 0) -> str:
+    """+1,234.5 / -1,234.5 for P&L columns; Jinja's % operator cannot add thousands separators."""
+    if value is None:
+        return _DASH
+    return f"{float(value):+,.{decimals}f}"
+
+
+templates.env.filters["signed"] = signed
+
+
+def pct(value: Any, sign: bool = False) -> str:
+    """A percentage for display: whole numbers, except that anything under 1% in size keeps one
+    decimal so a +0.1% margin does not print as +0% (user rule, 2026-10-04). No % sign appended."""
+    if value is None:
+        return _DASH
+    number = float(value)
+    decimals = 1 if 0 < abs(number) < 1 else 0
+    return f"{number:{'+' if sign else ''}.{decimals}f}"
+
+
+templates.env.filters["pct"] = pct

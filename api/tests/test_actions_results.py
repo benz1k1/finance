@@ -46,17 +46,32 @@ def test_daily_reports_bundle_old_and_new_layouts():
 
 
 def test_results_xbrl_quarter_ytd_and_balance_sheet():
-    annual = filings.financial_facts((SAMPLES / "x_Fourth_Quarter_Consolidated_Audited.xml").read_bytes(), "INDAS_x.xml")
+    annual = filings.financial_facts(
+        (SAMPLES / "x_Fourth_Quarter_Consolidated_Audited.xml").read_bytes(), "INDAS_x.xml"
+    )
     kinds = {f.period_kind for f in annual.facts}
-    assert kinds == {"Q", "YTD", "INSTANT"} and annual.taxonomy == "INDAS" and annual.period_end == date(2024, 3, 31)
+    assert (
+        kinds == {"Q", "YTD", "INSTANT"}
+        and annual.taxonomy == "INDAS"
+        and annual.period_end == date(2024, 3, 31)
+    )
     by = {(f.item, f.period_kind): f for f in annual.facts}
     assert by[("RevenueFromOperations", "Q")].unit == "INR"
     assert by[("Assets", "INSTANT")].value > 0
-    assert by[("CashFlowsFromUsedInOperatingActivities", "YTD")].value > by[("RevenueFromOperations", "Q")].value / 10
-    quarter = filings.financial_facts((SAMPLES / "x_First_Quarter_Consolidated_Un_Audited.xml").read_bytes(), "INDAS_y.xml")
+    assert (
+        by[("CashFlowsFromUsedInOperatingActivities", "YTD")].value
+        > by[("RevenueFromOperations", "Q")].value / 10
+    )
+    quarter = filings.financial_facts(
+        (SAMPLES / "x_First_Quarter_Consolidated_Un_Audited.xml").read_bytes(), "INDAS_y.xml"
+    )
     assert {f.period_kind for f in quarter.facts} == {"Q", "INSTANT"}  # Q1: no cash flow, segment assets only
     row = fundamentals.canonical(annual)
-    assert row["q_revenue"] == Decimal("2407150000000.00") and row["bs_equity"] is not None and row["ytd_cfo"] is not None
+    assert (
+        row["q_revenue"] == Decimal("2407150000000.00")
+        and row["bs_equity"] is not None
+        and row["ytd_cfo"] is not None
+    )
     assert not row["is_bank"] and fundamentals.ebitda(row) > float(row["q_pbt"])
 
 
@@ -71,8 +86,12 @@ def test_taxonomy_from_filename():
 
 
 def test_results_feed_listing_parses():
-    listing = filings.results_filings((RAW / "nse_results_filings/2024/results_filings_2024-10.json").read_bytes(), date(2024, 10, 1))
+    listing = filings.results_filings(
+        (RAW / "nse_results_filings/2024/results_filings_2024-10.json").read_bytes(), date(2024, 10, 1)
+    )
     assert len(listing) > 1000
     first = listing[0]
-    assert first.filing_id.startswith("R") and first.feed == "RESULTS" and first.period_end == date(2024, 9, 30)
+    assert (
+        first.filing_id.startswith("R") and first.feed == "RESULTS" and first.period_end == date(2024, 9, 30)
+    )
     assert sum(1 for f in listing if f.xbrl_url) > len(listing) * 0.9

@@ -7,6 +7,7 @@
   <div class="card bg-base-100 shadow-sm lg:col-span-2"><div class="card-body p-4">
     <h2 class="card-title text-sm">Definition <span class="badge badge-sm {{ STATUS_CLASS[engine.status] }}">{{ engine.status | lower }}</span>{% if engine.version %}<span class="badge badge-sm badge-ghost">v{{ engine.version }}</span>{% endif %}</h2>
     <p class="text-sm">{{ engine.description }}</p>
+    {% if example %}<p class="text-sm bg-base-200 rounded px-2 py-1" id="engine-example"><span class="text-xs uppercase tracking-wide text-base-content/60 mr-1">{{ 'Example' if engine.implemented else 'Would detect' }}</span>{{ example }}</p>{% endif %}
     {% if doc %}<pre class="text-xs whitespace-pre-wrap bg-base-200 rounded p-2 mt-2">{{ doc }}</pre>{% endif %}
     <p class="text-xs text-base-content/60 mt-2">Group: {{ engine.group | replace('_', ' ') | lower }} · radar: {{ engine.radar | lower }} · needs: {% for t in engine.requires %}<code class="{% if t in engine.missing %}text-error{% endif %}">{{ t }}</code>{% if not loop.last %}, {% endif %}{% else %}nothing{% endfor %}</p>
     {% if engine.status == 'BLOCKED' %}<div class="alert alert-sm mt-2 text-sm"><i class="mdi mdi-database-off-outline"></i><span>Blocked: {{ engine.missing | join(', ') }} {{ 'is' if engine.missing | length == 1 else 'are' }} empty or absent. See TODO.md for the phase that loads it.</span></div>{% endif %}

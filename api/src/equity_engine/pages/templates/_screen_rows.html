@@ -1,16 +1,18 @@
+{% set stance_rank = {'LONG': 0, 'LEAN_LONG': 1, 'NEUTRAL': 2, 'LEAN_SHORT': 3, 'SHORT': 4, 'AVOID': 5} %}{% set conviction_rank = {'HIGH': 0, 'MEDIUM': 1, 'LOW': 2, 'NONE': 3} %}
 {% for r in rows %}
-<tr>
-  <td><a class="link link-primary font-medium" href="/security/{{ r.symbol | urlencode }}">{{ r.symbol }}</a></td>
+<tr data-row data-symbol="{{ r.symbol }}" data-name="{{ r.name | lower }}" data-stance="{{ stance_rank[r.stance] }}" data-conviction="{{ conviction_rank[r.conviction] }}" data-bull="{{ r.bull_score }}" data-bear="{{ r.bear_score }}" data-net="{{ r.bull_score - r.bear_score }}" data-engines="{{ r.engines | length }}" data-mcap="{{ r.market_cap if r.market_cap is not none else '' }}" data-close="{{ r.close if r.close is not none else '' }}">
+  <td><a class="link link-primary font-medium" href="/equities/{{ r.symbol | urlencode }}">{{ r.symbol }}</a></td>
   <td class="text-xs">{{ r.name }}</td>
   <td><span class="badge badge-sm {{ STANCE_CLASS[r.stance] }}" {% if r.gate %}title="{{ r.gate }}"{% endif %}>{{ STANCE_LABEL[r.stance] }}</span></td>
   <td class="text-xs">{{ CONVICTION_LABEL[r.conviction] }}</td>
   <td class="n text-success">{{ r.bull_score | num(2) }}</td>
   <td class="n text-error">{{ r.bear_score | num(2) }}</td>
+  {% set net = r.bull_score - r.bear_score %}<td class="n font-medium {% if net > 0 %}text-success{% elif net < 0 %}text-error{% endif %}">{{ net | num(2) }}</td>
   <td class="text-xs">{% for e in r.engines %}<span class="badge badge-xs badge-ghost mr-1">{{ e | replace('_', ' ') }}</span>{% endfor %}</td>
   <td class="n">{{ r.market_cap | crore }}</td>
   <td class="n">{{ r.close | num(2) }}</td>
   <td class="text-xs">{{ (r.indices or []) | join(', ') }}</td>
 </tr>
 {% else %}
-<tr><td colspan="10" class="text-base-content/60">Nothing matches this screen.</td></tr>
+<tr><td colspan="11" class="text-base-content/60">Nothing matches this screen.</td></tr>
 {% endfor %}

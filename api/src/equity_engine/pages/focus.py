@@ -1,4 +1,4 @@
-"""The Nifty 50 / Nifty 500 focus toggle: a cookie read by every page and list query."""
+"""The Nifty 50 / 100 / 200 / 500 focus toggle: a cookie read by every page and list query."""
 
 from fastapi import HTTPException
 from fastapi.responses import RedirectResponse

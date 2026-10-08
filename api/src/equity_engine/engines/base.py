@@ -295,6 +295,8 @@ class Snapshot:
     _extractions: dict[str, list[dict[str, Any]]] | None = field(default=None, repr=False)
     _texts: dict[str, list[dict[str, Any]]] | None = field(default=None, repr=False)
     _universe: set[str] | None = field(default=None, repr=False)
+    _global: dict[str, Any] | None = field(default=None, repr=False)
+    _pe_reference: dict[str, dict[str, list[float]]] | None = field(default=None, repr=False)
 
     @property
     def prices(self) -> list[dict[str, Any]]:
@@ -486,6 +488,37 @@ class Snapshot:
             self._texts = by_isin
         return self._texts
 
+    @property
+    def global_context(self) -> dict[str, Any]:
+        """The world on the as-of date (spec §120): per-index returns, median 3-month return, stress flag."""
+        if self._global is None:
+            from equity_engine.service import (
+                global_markets,  # noqa: PLC0415 — circular: service imports engines
+            )
+
+            self._global = global_markets.context(self.connection, self.as_of)
+        return self._global
+
+    @property
+    def market_median_3m_pct(self) -> float | None:
+        """The median 3-month return of the priced universe, from the same price features."""
+        returns = [(p["close"] / p["c3m"] - 1) * 100 for p in self.prices if p.get("c3m")]
+        if not returns:
+            return None
+        returns.sort()
+        middle = len(returns) // 2
+        return returns[middle] if len(returns) % 2 else (returns[middle - 1] + returns[middle]) / 2
+
+    @property
+    def pe_reference(self) -> dict[str, dict[str, list[float]]]:
+        """Per ISIN, the company's P/E on past stress dates, expansion dates and all sampled dates
+        (spec §121), computed point in time: the close on the date × shares outstanding known then,
+        over the TTM profit broadcast by then. Dates come from the regime rows of earlier runs,
+        one per calendar month."""
+        if self._pe_reference is None:
+            self._pe_reference = _pe_reference(self.connection, self.as_of, self.fundamentals)
+        return self._pe_reference
+
     def close(self, isin: str) -> Decimal | None:
         """The close actually printed on the as-of day (unadjusted), for the ledger's price_at."""
         found = self.price_by_isin.get(isin)
@@ -516,3 +549,77 @@ class Snapshot:
                 for item in rows(self.connection, "SELECT isin, nse_symbol FROM security")
             }
         return self._symbols.get(isin, isin)
+
+
+# ------------------------------------------------------------------ P/E history (spec §121)
+
+_REGIME_DATES = """
+    SELECT DISTINCT ON (date_trunc('month', m.as_of)) m.as_of, m.median_return_3m_pct
+      FROM market_regime m JOIN engine_run r USING (run_id)
+     WHERE r.finished_at IS NOT NULL AND m.as_of < :d AND m.median_return_3m_pct IS NOT NULL
+     ORDER BY date_trunc('month', m.as_of), m.as_of DESC
+"""
+_CLOSES_AT = """
+    SELECT p.isin, p.trade_date, p.close FROM price_daily p
+     WHERE p.trade_date = ANY(:dates) AND p.series IN ('EQ', 'SM')
+"""
+_SHARES = """
+    SELECT s.isin, p.period_end, f.broadcast_at, p.total_shares
+      FROM shareholding_pattern p JOIN shareholding_filing f USING (record_id) JOIN security s ON s.nse_symbol = p.symbol
+     WHERE p.total_shares IS NOT NULL AND f.broadcast_at <= CAST(:d AS date) + 1
+     ORDER BY s.isin, f.broadcast_at
+"""
+STRESS_MEDIAN_3M = -10.0
+EXPANSION_MEDIAN_3M = 10.0
+
+
+def _pe_reference(
+    connection: Connection, as_of: date, fundamentals: dict[str, list[dict[str, Any]]]
+) -> dict[str, dict[str, list[float]]]:
+    dates = rows(connection, _REGIME_DATES, {"d": as_of})
+    if not dates:
+        return {}
+    kind_of = {
+        r["as_of"]: (
+            "stress"
+            if float(r["median_return_3m_pct"]) <= STRESS_MEDIAN_3M
+            else "expansion"
+            if float(r["median_return_3m_pct"]) >= EXPANSION_MEDIAN_3M
+            else "normal"
+        )
+        for r in dates
+    }
+    closes: dict[str, dict[date, float]] = {}
+    for r in rows(connection, _CLOSES_AT, {"dates": list(kind_of)}):
+        closes.setdefault(r["isin"], {})[r["trade_date"]] = float(r["close"])
+    shares: dict[str, list[tuple[Any, float]]] = {}
+    for r in rows(connection, _SHARES, {"d": as_of}):
+        shares.setdefault(r["isin"], []).append((r["broadcast_at"], float(r["total_shares"])))
+    out: dict[str, dict[str, list[float]]] = {}
+    for isin, history in fundamentals.items():
+        own_shares = shares.get(isin)
+        own_closes = closes.get(isin)
+        if not own_shares or not own_closes:
+            continue
+        quarters = sorted(history, key=lambda q: q["period_end"], reverse=True)
+        ref = {"stress": [], "expansion": [], "all": []}
+        for day, kind in kind_of.items():
+            close = own_closes.get(day)
+            if close is None:
+                continue
+            known = [q for q in quarters if q["broadcast_at"].date() <= day]
+            if len(known) < 4 or any(q.get("q_pat") is None for q in known[:4]):
+                continue
+            ttm = float(sum(q["q_pat"] for q in known[:4]))
+            if ttm <= 0:
+                continue
+            # shares outstanding as last disclosed on or before the date; else the earliest disclosure
+            before = [n for at, n in own_shares if at.date() <= day]
+            count = before[-1] if before else own_shares[0][1]
+            pe = close * count / ttm
+            ref["all"].append(pe)
+            if kind != "normal":
+                ref[kind].append(pe)
+        if ref["all"]:
+            out[isin] = ref
+    return out

@@ -54,3 +54,5 @@ document_diff,Document Diff and Language Change,71,3,EVENTS_DOCUMENTS,RISK,docum
 unit_economics,Unit Economics and Cash Runway,104,6,FUNDAMENTALS,RISK,fin_fact,Contribution margin and months of cash for loss-making companies
 macro_sensitivity,Macro and Earnings Sensitivity,105,6,FUNDAMENTALS,NONE,fin_fact|macro_series,Earnings beta to rates and currency and oil
 stance,Company Stance,118,2,FRAMEWORK,NONE,,The deterministic summary of every engine's signals for one company
+global_resilience,Global Resilience,120,6,PRICE,OPPORTUNITY,global_index_daily|price_daily,Quality names holding up while the world's indexes fall; the mirror is high-beta names falling with shrinking profit
+historical_pe,Historical P/E,121,6,VALUATION,OPPORTUNITY,fin_fact|price_daily|shareholding_pattern,Today's P/E against the company's own P/E at past stress troughs and expansion peaks

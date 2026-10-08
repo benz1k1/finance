@@ -1,0 +1,61 @@
+symbol,name,owner,category,parent,note
+BHEL,Bharat Heavy Electricals,central,Maharatna,,Ministry of Heavy Industries
+BPCL,Bharat Petroleum,central,Maharatna,,Ministry of Petroleum
+COALINDIA,Coal India,central,Maharatna,,Ministry of Coal
+GAIL,GAIL (India),central,Maharatna,,Ministry of Petroleum
+HINDPETRO,Hindustan Petroleum,central,Maharatna,ONGC,ONGC holds the majority since 2018
+IOC,Indian Oil,central,Maharatna,,Ministry of Petroleum
+NTPC,NTPC,central,Maharatna,,Ministry of Power
+OIL,Oil India,central,Maharatna,,Ministry of Petroleum
+ONGC,Oil and Natural Gas Corporation,central,Maharatna,,Ministry of Petroleum
+POWERGRID,Power Grid Corporation,central,Maharatna,,Ministry of Power
+SAIL,Steel Authority of India,central,Maharatna,,Ministry of Steel
+PFC,Power Finance Corporation,central,Maharatna,,Ministry of Power
+RECLTD,REC,central,Maharatna,PFC,PFC holds the majority since 2019
+HAL,Hindustan Aeronautics,central,Maharatna,,Ministry of Defence
+BEL,Bharat Electronics,central,Navratna,,Ministry of Defence
+CONCOR,Container Corporation of India,central,Navratna,,Ministry of Railways
+ENGINERSIN,Engineers India,central,Navratna,,Ministry of Petroleum
+HUDCO,Housing and Urban Development Corporation,central,Navratna,,Ministry of Housing
+IRCON,IRCON International,central,Navratna,,Ministry of Railways
+IRFC,Indian Railway Finance Corporation,central,Navratna,,Ministry of Railways
+NATIONALUM,National Aluminium,central,Navratna,,Ministry of Mines
+NBCC,NBCC (India),central,Navratna,,Ministry of Housing
+NLCINDIA,NLC India,central,Navratna,,Ministry of Coal
+NMDC,NMDC,central,Navratna,,Ministry of Steel
+RVNL,Rail Vikas Nigam,central,Navratna,,Ministry of Railways
+RITES,RITES,central,Navratna,,Ministry of Railways
+SCI,Shipping Corporation of India,central,Navratna,,Ministry of Shipping
+NHPC,NHPC,central,Navratna,,Ministry of Power
+SJVN,SJVN,central,Navratna,,Ministry of Power
+MAZDOCK,Mazagon Dock Shipbuilders,central,Navratna,,Ministry of Defence
+IREDA,Indian Renewable Energy Development Agency,central,Navratna,,Ministry of New and Renewable Energy
+RAILTEL,RailTel Corporation,central,Navratna,,Ministry of Railways
+COCHINSHIP,Cochin Shipyard,central,Navratna,,Ministry of Shipping
+MRPL,Mangalore Refinery and Petrochemicals,central,Miniratna I,ONGC,ONGC 71.6% and HPCL 17%; government control is indirect
+BDL,Bharat Dynamics,central,Miniratna I,,Ministry of Defence
+GRSE,Garden Reach Shipbuilders,central,Miniratna I,,Ministry of Defence
+IRCTC,Indian Railway Catering and Tourism,central,Miniratna I,,Ministry of Railways
+HINDCOPPER,Hindustan Copper,central,Miniratna I,,Ministry of Mines
+BEML,BEML,central,Miniratna I,,Ministry of Defence
+MMTC,MMTC,central,Miniratna I,,Ministry of Commerce
+ITI,ITI,central,Miniratna I,,Ministry of Communications
+SBIN,State Bank of India,central,Public-sector bank,,Ministry of Finance; not a DPE ratna category
+BANKBARODA,Bank of Baroda,central,Public-sector bank,,Ministry of Finance
+PNB,Punjab National Bank,central,Public-sector bank,,Ministry of Finance
+CANBK,Canara Bank,central,Public-sector bank,,Ministry of Finance
+UNIONBANK,Union Bank of India,central,Public-sector bank,,Ministry of Finance
+INDIANB,Indian Bank,central,Public-sector bank,,Ministry of Finance
+BANKINDIA,Bank of India,central,Public-sector bank,,Ministry of Finance
+CENTRALBK,Central Bank of India,central,Public-sector bank,,Ministry of Finance
+UCOBANK,UCO Bank,central,Public-sector bank,,Ministry of Finance
+IOB,Indian Overseas Bank,central,Public-sector bank,,Ministry of Finance
+MAHABANK,Bank of Maharashtra,central,Public-sector bank,,Ministry of Finance
+IDBI,IDBI Bank,central,Public-sector bank,LIC,LIC 49% and Government of India 45%; stake sale under way
+LICI,Life Insurance Corporation of India,central,Public-sector insurer,,Ministry of Finance
+GICRE,General Insurance Corporation of India,central,Public-sector insurer,,Ministry of Finance
+NIACL,New India Assurance,central,Public-sector insurer,,Ministry of Finance
+GMDCLTD,Gujarat Mineral Development Corporation,state,State PSU,,Government of Gujarat
+PETRONET,Petronet LNG,psu-promoted,PSU-promoted,,ONGC IOC GAIL and BPCL hold 12.5% each; not government-controlled
+IGL,Indraprastha Gas,psu-promoted,PSU-promoted,,GAIL and BPCL hold 22.5% each; not government-controlled
+MGL,Mahanagar Gas,psu-promoted,PSU-promoted,GAIL,GAIL 32.5%; not government-controlled

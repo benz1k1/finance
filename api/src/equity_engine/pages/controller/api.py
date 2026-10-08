@@ -168,15 +168,16 @@ def screen(
     has: Annotated[list[str] | None, Query()] = None,
     has_not: Annotated[list[str] | None, Query()] = None,
     confirmed_only: bool = False,
-    min_mcap: float | None = None,
+    min_mcap: str = "",
     index: str = "",
     limit: int = Query(default=200, ge=1, le=5000),
 ) -> dict[str, Any]:
     stance, conviction, has, has_not = stance or [], conviction or [], has or [], has_not or []
+    floor = signal_service.parse_min_mcap(min_mcap)
     with transaction() as connection:
         run = _run_or_404(connection)
         found = signal_service.screen(
-            connection, run, stance, conviction, has, has_not, confirmed_only, min_mcap, index, limit
+            connection, run, stance, conviction, has, has_not, confirmed_only, floor, index, limit
         )
     return {"success": True, "run": run, "rows": found}
 

@@ -204,7 +204,9 @@ def _old_percent(value: str | None) -> Decimal | None:
     return None if text is None else Decimal(text).quantize(Decimal("0.0001"))
 
 
-def _sum_percent(facts: dict[str, dict[str, str]], contexts: tuple[str, ...], read=_percent) -> Decimal | None:
+def _sum_percent(
+    facts: dict[str, dict[str, str]], contexts: tuple[str, ...], read=_percent
+) -> Decimal | None:
     parts = [read(facts.get(context, {}).get(_SHARE)) for context in contexts]
     present = [part for part in parts if part is not None]
     return sum(present, Decimal(0)) if present else None
@@ -243,7 +245,9 @@ def shareholding_pattern(content: bytes) -> ShareholdingPatternRow:
     foreign = _sum_percent(facts, _OLD_FOREIGN_CONTEXTS, _old_percent)
     record["fpi_pct"] = _old_percent(facts.get("InstitutionsForeignPortfolioInvestorI", {}).get(_SHARE))
     record["fii_pct"] = foreign
-    record["dii_pct"] = (institutions - foreign) if institutions is not None and foreign is not None else institutions
+    record["dii_pct"] = (
+        (institutions - foreign) if institutions is not None and foreign is not None else institutions
+    )
     return ShareholdingPatternRow.model_validate(record)
 
 

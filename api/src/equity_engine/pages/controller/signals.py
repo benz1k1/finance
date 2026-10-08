@@ -9,7 +9,7 @@ from equity_engine.db import transaction
 from equity_engine.engines.base import STAGES
 from equity_engine.pages.focus import current as current_focus
 from equity_engine.pages.templating import templates
-from equity_engine.service import signals
+from equity_engine.service import company, signals
 
 FEED_LIMIT = 200
 SCREEN_LIMIT = 200
@@ -26,6 +26,7 @@ def radar_page(request: Request):
             previous = signals.previous_run(connection, run)
             focus = current_focus(request)
             context = {
+                "ownership_value": company.ownership_value(connection),
                 "run": run,
                 "previous": previous,
                 "regime": signals.regime(connection, run),
@@ -80,10 +81,13 @@ def screen_page(
     has: Annotated[list[str] | None, Query()] = None,
     has_not: Annotated[list[str] | None, Query()] = None,
     confirmed_only: bool = False,
-    min_mcap: float | None = None,
+    min_mcap: str = "",
     index: str = "",
 ):
     stance, conviction, has, has_not = stance or [], conviction or [], has or [], has_not or []
+    # The form always submits the market-cap box, empty when untouched; "" must mean no floor, not
+    # a 422 (which htmx swallows, so every chip looked dead).
+    min_mcap_crore = signals.parse_min_mcap(min_mcap)
     for value in stance:
         if value not in signals.SCREEN_STANCES:
             raise HTTPException(status_code=422, detail=f"Unknown stance {value}")
@@ -102,7 +106,7 @@ def screen_page(
                 has,
                 has_not,
                 confirmed_only,
-                min_mcap,
+                min_mcap_crore,
                 index,
                 SCREEN_LIMIT,
                 current_focus(request),
@@ -121,7 +125,7 @@ def screen_page(
                 "has": has,
                 "has_not": has_not,
                 "confirmed_only": confirmed_only,
-                "min_mcap": min_mcap,
+                "min_mcap": min_mcap_crore,
                 "index": index,
             },
             "stances": signals.SCREEN_STANCES,

@@ -1,0 +1,47 @@
+{# the compact close chart; swapped whole when a range button is pressed #}
+<div class="card bg-base-100 shadow-sm mb-4" id="price-chart" hx-target="this" hx-swap="outerHTML">
+<div class="card-body p-3">
+  {% set labels = {'ytd': 'YTD', '1y': '1y', '3y': '3y', '5y': '5y', 'all': 'All'} %}
+  <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-base-content/70 mb-1">
+    <span class="font-semibold text-base-content">Close</span>
+    <div class="join" id="chart-range">{% for r in chart_ranges %}<button type="button" class="join-item btn btn-xs {% if r == chart_range %}btn-primary{% else %}btn-ghost{% endif %}" hx-get="/equities/{{ security.nse_symbol | urlencode }}/chart?range={{ r }}">{{ labels[r] }}</button>{% endfor %}</div>
+    {% if price_chart %}{% set pc = price_chart %}
+    <span>{{ pc.first_date | fmt_date }} ₹{{ pc.first | num(2) }} → {{ pc.last_date | fmt_date }} ₹{{ pc.last | num(2) }}</span>
+    <span class="font-bold {% if pc.change_pct > 0 %}text-success{% elif pc.change_pct < 0 %}text-error{% endif %}">{{ pc.change_pct | pct(true) }}%</span>
+    <span class="ml-auto">high ₹{{ pc.high | num(2) }} · low ₹{{ pc.low | num(2) }} · {{ chart_sessions | num }} sessions</span>
+    {% endif %}
+  </div>
+  {% if price_chart %}{% set pc = price_chart %}
+  {# hover: nearest session by x; the crosshair and label are plain elements driven by Alpine #}
+  <script type="application/json" id="price-chart-points-{{ security.nse_symbol }}">{{ pc.points | tojson }}</script>
+  <script>
+    // Alpine component for the chart hover; a plain function so an htmx-swapped fragment can define it
+    // before Alpine initialises the new nodes. Data comes from the JSON block, never from an attribute.
+    window.priceChart = window.priceChart || function (el, width) {
+      return {
+        pts: JSON.parse(el.querySelector('script[type="application/json"]').textContent), w: width, i: null, pinned: false,
+        at(clientX, target) { const r = target.getBoundingClientRect(); const x = (clientX - r.left) / r.width * this.w; let best = 0, d = Infinity; for (let k = 0; k < this.pts.length; k++) { const dd = Math.abs(this.pts[k][0] - x); if (dd < d) { d = dd; best = k } } return best },
+        move(e) { if (!this.pinned) this.i = this.at(e.clientX, e.currentTarget) },
+        touch(e) { if (e.touches && e.touches.length) this.i = this.at(e.touches[0].clientX, e.currentTarget) },
+        click(e) { const k = this.at(e.clientX, e.currentTarget); if (this.pinned && k === this.i) { this.pinned = false } else { this.i = k; this.pinned = true } },
+        leave() { if (!this.pinned) this.i = null },
+        fmt(v) { return v.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+        day(s) { return new Date(s).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) },
+      }
+    }
+  </script>
+  <div class="relative" x-data="window.priceChart($el.parentElement, {{ pc.width }})"
+       @mousemove="move($event)" @mouseleave="leave()" @click="click($event)" @touchstart.passive="touch($event)" @touchmove.passive="touch($event)" title="Move to read a session; click to pin the reading, click again to release">
+  <div x-show="i !== null" x-cloak class="absolute top-0 bottom-0 w-px bg-base-content/40 pointer-events-none" :style="i !== null ? 'left:' + (pts[i][0] / w * 100) + '%' : ''"></div>
+  <div x-show="i !== null" x-cloak class="absolute -top-6 badge badge-neutral badge-sm font-bold pointer-events-none whitespace-nowrap" :style="i !== null ? 'left:' + (pts[i][0] / w * 100) + '%; transform: translateX(' + (pts[i][0] / w > 0.8 ? '-100%' : '0') + ')' : ''" x-text="i !== null ? '₹' + fmt(pts[i][3]) + ' · ' + day(pts[i][2]) + (pinned ? ' 📌' : '') : ''" id="chart-hover"></div>
+  <svg viewBox="0 0 {{ pc.width }} {{ pc.height }}" class="w-full h-16 cursor-crosshair" role="img" aria-label="Closing price from ₹{{ pc.first | num(2) }} to ₹{{ pc.last | num(2) }}" preserveAspectRatio="none">
+    <path d="{{ pc.area }}" class="{% if pc.up %}fill-success{% else %}fill-error{% endif %}" fill-opacity="0.12"></path>
+    <path d="{{ pc.path }}" fill="none" class="{% if pc.up %}stroke-success{% else %}stroke-error{% endif %}" stroke-width="1.6" stroke-linejoin="round" vector-effect="non-scaling-stroke"></path>
+    <circle cx="{{ pc.high_x }}" cy="{{ pc.high_y }}" r="2.5" class="fill-success"><title>High ₹{{ pc.high | num(2) }}</title></circle>
+    <circle cx="{{ pc.low_x }}" cy="{{ pc.low_y }}" r="2.5" class="fill-error"><title>Low ₹{{ pc.low | num(2) }}</title></circle>
+    <circle x-show="i !== null" x-cloak :cx="i !== null ? pts[i][0] : 0" :cy="i !== null ? pts[i][1] : 0" r="3" class="{% if pc.up %}fill-success{% else %}fill-error{% endif %}" stroke="white" stroke-width="1.5"></circle>
+  </svg>
+  </div>
+  <p class="text-xs text-base-content/50 mt-1">Raw closes, not adjusted for bonuses or splits; the Prices tab has the rows.</p>
+  {% else %}<p class="text-xs text-base-content/60">Not enough sessions in this range to draw.</p>{% endif %}
+</div></div>

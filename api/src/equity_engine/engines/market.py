@@ -136,10 +136,17 @@ class MarketRegime:
             regime = "RISK_OFF"
         else:
             regime = "MIXED"
+        world = snap.global_context
         return {
             "as_of": snap.as_of,
+            "global_3m_pct": world["median_3m_pct"] if world else None,
+            "global_stress": world["stress"] if world else None,
+            "global_indexes": world["indexes"] if world else None,
             "universe": len(snap.prices),
+            "with_200dma": len(priced),
+            "above_200dma": above,
             "above_200dma_pct": above_pct,
+            "advancing_1m": advancing,
             "median_return_3m_pct": round(median3, 1) if median3 is not None else None,
             "advancing_1m_pct": round(100 * advancing / len(snap.prices), 1) if snap.prices else None,
             "regime": regime,

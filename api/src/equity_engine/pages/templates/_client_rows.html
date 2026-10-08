@@ -1,0 +1,17 @@
+{% for c in clients %}
+{% set t = totals.get(c.client_name) %}
+<tr data-client="{{ c.client_name }}" data-type="{{ c.kind.label }}" data-deals="{{ c.deals }}" data-securities="{{ c.securities }}" data-bought="{{ c.bought_crore }}" data-sold="{{ c.sold_crore }}" data-open="{{ (t.market_value / 1e7) if t else '' }}" data-pnl="{{ (t.total_pnl / 1e7) if t else '' }}" data-ret="{{ t.return_on_bought_pct if t and t.return_on_bought_pct is not none else '' }}" data-last="{{ c.last_deal }}">
+  <td><a class="link link-primary font-medium" href="/client/{{ c.client_name | urlencode }}">{{ c.client_name }}</a></td>
+  <td><span class="badge badge-xs {{ c.kind.badge }}" title="{{ c.kind.basis }}">{{ c.kind.label }}</span></td>
+  <td class="n">{{ c.deals | num }}</td>
+  <td class="n">{{ c.securities | num }}</td>
+  <td class="n">{{ c.bought_crore | num(0) }}</td>
+  <td class="n">{{ c.sold_crore | num(0) }}</td>
+  <td class="n">{{ (t.market_value / 1e7) | num(0) if t else '—' }}</td>
+  <td class="n {% if t and t.total_pnl > 0 %}text-success{% elif t and t.total_pnl < 0 %}text-error{% endif %}">{{ (t.total_pnl / 1e7) | num(0) if t else '—' }}</td>
+  <td class="n">{{ t.return_on_bought_pct | pct(true) if t else '—' }}</td>
+  <td class="text-xs whitespace-nowrap">{{ c.first_deal | fmt_date }} → {{ c.last_deal | fmt_date }}</td>
+</tr>
+{% else %}
+<tr><td colspan="10" class="text-center text-base-content/60">No counterparty matches.</td></tr>
+{% endfor %}

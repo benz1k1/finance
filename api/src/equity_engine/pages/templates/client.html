@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}{{ client.client_name }} · Equity Engine{% endblock %}
+{% block heading %}{{ client.client_name }} <span class="badge badge-sm {{ client.kind.badge }} ml-2" title="{{ client.kind.basis }}">{{ client.kind.label }}</span>{% endblock %}
+{% block header_actions %}<a href="/client" class="btn btn-ghost btn-xs"><i class="mdi mdi-arrow-left"></i> Deal clients</a>{% endblock %}
+{% block content %}
+<div class="card bg-base-100 shadow-sm mb-4" id="client-about"><div class="card-body p-4 gap-1">
+  <h2 class="card-title text-sm">About <span class="badge badge-sm {{ client.kind.badge }}" title="{{ client.kind.basis }}">{{ client.kind.label }}</span></h2>
+  {% for line in about %}<p class="text-sm">{{ line }}</p>{% endfor %}
+  {% if meta and meta.found %}
+  <div class="text-sm mt-2 border-t border-base-200 pt-2"><strong>{{ meta.title }}</strong>{% if meta.description %} — {{ meta.description }}{% endif %}</div>
+  <p class="text-sm">{{ meta.extract }}</p>
+  <div class="text-xs text-base-content/60">Source: <a class="link" href="{{ meta.url }}" target="_blank" rel="noopener">Wikipedia</a>, looked up once on {{ meta.looked_up_at | fmt_date }}; search "{{ meta.query }}".</div>
+  {% elif meta %}
+  <div class="text-xs text-base-content/60">Looked up online once on {{ meta.looked_up_at | fmt_date }} (Wikipedia, search "{{ meta.query }}"): no page about this entity. Ownership of the vehicle is not disclosed in NSE's deal files.</div>
+  {% else %}
+  <div class="text-xs text-base-content/60">Not looked up online yet (<code>python ingest.py clients-meta</code>). Ownership of the vehicle is not disclosed in NSE's deal files.</div>
+  {% endif %}
+</div></div>
+
+<div class="stats stats-vertical sm:stats-horizontal shadow-sm bg-base-100 w-full mb-4" id="client-summary">
+  <div class="stat py-3"><div class="stat-title text-xs">Portfolio value</div><div class="stat-value text-lg">₹{{ (totals.market_value / 1e7) | num(0) }} cr</div><div class="stat-desc">{{ totals.open_positions | num }} open positions from disclosed buys, at the latest close{% if totals.unpriced_open_qty %} · {{ totals.unpriced_open_qty | num }} shares unpriced{% endif %}</div></div>
+  <div class="stat py-3"><div class="stat-title text-xs">Total P&amp;L</div><div class="stat-value text-lg {% if totals.total_pnl > 0 %}text-success{% elif totals.total_pnl < 0 %}text-error{% endif %}">{{ (totals.total_pnl / 1e7) | signed(0) }} cr</div><div class="stat-desc">{{ totals.return_on_bought_pct | pct(true) }}{% if totals.return_on_bought_pct is not none %}%{% endif %} on ₹{{ (totals.bought_value / 1e7) | num(0) }} cr bought</div></div>
+  <div class="stat py-3"><div class="stat-title text-xs">Realised</div><div class="stat-value text-lg {% if totals.realised > 0 %}text-success{% elif totals.realised < 0 %}text-error{% endif %}">{{ (totals.realised / 1e7) | signed(0) }} cr</div><div class="stat-desc">sells matched to earlier disclosed buys at average cost</div></div>
+  <div class="stat py-3"><div class="stat-title text-xs">Unrealised</div><div class="stat-value text-lg {% if totals.unrealised > 0 %}text-success{% elif totals.unrealised < 0 %}text-error{% endif %}">{{ (totals.unrealised / 1e7) | signed(0) }} cr</div><div class="stat-desc">{{ totals.unrealised_pct | pct(true) }}{% if totals.unrealised_pct is not none %}%{% endif %} on ₹{{ (totals.open_cost / 1e7) | num(0) }} cr of open cost</div></div>
+  <div class="stat py-3"><div class="stat-title text-xs">Deals</div><div class="stat-value text-lg">{{ client.deals | num }}</div><div class="stat-desc">{{ client.bulk_deals | num }} bulk · {{ client.block_deals | num }} block · {{ client.securities | num }} securities · {{ client.first_deal | fmt_date }} → {{ client.last_deal | fmt_date }}{% if totals.uncovered_sold_value %} · ₹{{ (totals.uncovered_sold_value / 1e7) | num(0) }} cr sold with no disclosed buy behind it{% endif %}</div></div>
+</div>
+
+<div class="card bg-base-100 shadow-sm mb-4"><div class="card-body p-4">
+  <h2 class="card-title text-sm">Disclosed portfolio <span class="font-normal text-base-content/60">— average-cost book of the bulk and block deals, priced at the newest close</span></h2>
+  {% set columns = [('symbol', 'Symbol', false), ('name', 'Name', false), ('deals', 'Deals', true), ('bought_qty', 'Bought qty', true), ('sold_qty', 'Sold qty', true), ('open_qty', 'Open qty', true), ('avg_cost', 'Avg cost ₹', true), ('last_close', 'Last close ₹', true), ('market_value', 'Value (₹ cr)', true), ('unrealised', 'Unrealised (₹ cr)', true), ('unrealised_pct', 'Unrealised %', true), ('realised', 'Realised (₹ cr)', true), ('total_pnl', 'Total P&L (₹ cr)', true), ('uncovered_sold_qty', 'Uncovered sold', true), ('last_deal', 'Deals from → to', false)] %}
+  <div class="overflow-x-auto" x-data="{ key: '', desc: true, sort(k, numeric) { if (this.key === k) { this.desc = !this.desc } else { this.key = k; this.desc = numeric } ; const body = $refs.body; const rows = Array.from(body.querySelectorAll('tr')); rows.sort((a, b) => { const av = a.dataset[k], bv = b.dataset[k]; const an = av === '' ? null : (numeric ? parseFloat(av) : av), bn = bv === '' ? null : (numeric ? parseFloat(bv) : bv); if (an === null) return 1; if (bn === null) return -1; return (an < bn ? -1 : an > bn ? 1 : 0) * (this.desc ? -1 : 1) }); rows.forEach(r => body.appendChild(r)) } }">
+  <table class="table table-sm" id="portfolio-table">
+    <thead><tr>{% for key, label, numeric in columns %}<th class="{% if numeric %}n {% endif %}cursor-pointer select-none hover:text-primary" @click="sort('{{ key }}', {{ 'true' if numeric else 'false' }})" title="Sort by {{ label | replace('&amp;', '&') }}">{{ label }} <span x-show="key === '{{ key }}'" x-cloak><i class="mdi" :class="desc ? 'mdi-arrow-down' : 'mdi-arrow-up'"></i></span></th>{% endfor %}</tr></thead>
+    <tbody x-ref="body">
+    {% for p in portfolio %}
+    <tr {% for key, label, numeric in columns %}data-{{ key | replace('_', '-') }}="{% set v = p[key] %}{% if v is none %}{% elif numeric %}{{ v }}{% else %}{{ v }}{% endif %}" {% endfor %}>
+      <td><a class="link link-primary font-medium" href="/equities/{{ p.symbol | urlencode }}">{{ p.symbol }}</a></td>
+      <td class="text-xs">{{ p.name or p.security_name or '' }}</td>
+      <td class="n">{{ p.deals | num }}</td>
+      <td class="n">{{ p.bought_qty | num }}</td>
+      <td class="n">{{ p.sold_qty | num }}</td>
+      <td class="n font-medium">{{ p.open_qty | num }}</td>
+      <td class="n">{{ p.avg_cost | num(2) if p.avg_cost is not none else '—' }}</td>
+      <td class="n" title="{{ p.close_date | fmt_date if p.close_date else '' }}">{{ p.last_close | num(2) if p.last_close is not none else '—' }}</td>
+      <td class="n">{{ (p.market_value / 1e7) | num(1) if p.market_value is not none else '—' }}</td>
+      <td class="n {% if p.unrealised and p.unrealised > 0 %}text-success{% elif p.unrealised and p.unrealised < 0 %}text-error{% endif %}">{{ ((p.unrealised / 1e7) | signed(1)) if p.unrealised is not none else '—' }}</td>
+      <td class="n {% if p.unrealised_pct and p.unrealised_pct > 0 %}text-success{% elif p.unrealised_pct and p.unrealised_pct < 0 %}text-error{% endif %}">{{ p.unrealised_pct | pct(true) }}</td>
+      <td class="n {% if p.realised > 0 %}text-success{% elif p.realised < 0 %}text-error{% endif %}">{{ ((p.realised / 1e7) | signed(1)) if p.covered_sold_qty else '—' }}</td>
+      <td class="n font-medium {% if p.total_pnl > 0 %}text-success{% elif p.total_pnl < 0 %}text-error{% endif %}">{{ (p.total_pnl / 1e7) | signed(1) }}</td>
+      <td class="n text-base-content/60" title="shares sold through disclosed deals that no disclosed buy supplied; their profit is unknowable here">{{ p.uncovered_sold_qty | num if p.uncovered_sold_qty else '' }}</td>
+      <td class="text-xs whitespace-nowrap">{{ p.first_deal | fmt_date }} → {{ p.last_deal | fmt_date }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  <p class="text-xs text-base-content/60">Click a column heading to sort; click again to reverse. Average-cost method over the disclosed deals in date order (buys before sells on the same day). Realised P&amp;L is computed only for sells that earlier disclosed buys cover; shares sold beyond that are "uncovered" — acquired outside bulk and block deals, so their cost and profit are unknown and they are excluded from every P&amp;L figure. Open quantity is what the disclosed buys still hold; its value and unrealised P&amp;L use the newest close. Only trades NSE disclosed, never a holding statement.</p>
+</div></div>
+
+<div class="card bg-base-100 shadow-sm"><div class="card-body p-4">
+  <h2 class="card-title text-sm">Deals <span class="font-normal text-base-content/60">— newest first, at most {{ deal_limit }}</span></h2>
+  <div class="overflow-x-auto"><table class="table table-xs" id="deal-table">
+    <thead><tr><th>Date</th><th>Kind</th><th>Symbol</th><th>Side</th><th class="n">Quantity</th><th class="n">Price ₹</th><th class="n">Value (₹ cr)</th><th>Remarks</th></tr></thead>
+    <tbody>
+    {% for d in deals %}
+    <tr>
+      <td class="whitespace-nowrap">{{ d.deal_date | fmt_date }}</td>
+      <td class="text-xs">{{ d.kind | lower }}</td>
+      <td><a class="link link-primary" href="/equities/{{ d.symbol | urlencode }}">{{ d.symbol }}</a></td>
+      <td><span class="badge badge-xs {% if d.side == 'BUY' %}badge-success{% else %}badge-error{% endif %}">{{ d.side | lower }}</span></td>
+      <td class="n">{{ d.quantity | num }}</td>
+      <td class="n">{{ d.price | num(2) }}</td>
+      <td class="n">{{ d.value_crore | num(1) }}</td>
+      <td class="text-xs">{{ d.remarks if d.remarks != '-' else '' }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div></div>
+{% endblock %}

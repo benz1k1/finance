@@ -38,20 +38,23 @@ SEED_DIR = REPO_ROOT / "resources" / "seed"
 if Path(sys.executable) != VENV_PYTHON:
     if not VENV_PYTHON.is_file():
         raise SystemExit(f"No venv at {VENV_PYTHON}. Run: cd api && uv sync")
-    os.execv(VENV_PYTHON, [str(VENV_PYTHON), str(Path(__file__).resolve()), *sys.argv[1:]])
+    os.execv(
+        VENV_PYTHON, [str(VENV_PYTHON), str(Path(__file__).resolve()), *sys.argv[1:]]
+    )
 sys.path.insert(0, str(REPO_ROOT / "api" / "src"))
 
 
 def ensure_role() -> None:
     """Create the non-superuser app role and its database from a superuser connection."""
+    from equity_engine.config import DATABASE_URL
     from sqlalchemy import create_engine, text
     from sqlalchemy.engine.url import make_url
 
-    from equity_engine.config import DATABASE_URL
-
     admin_url = (os.getenv("EQUITY_ENGINE_ADMIN_DB_URL") or "").strip()
     if not admin_url:
-        raise SystemExit("EQUITY_ENGINE_ADMIN_DB_URL (a superuser URL) is required for --ensure-role")
+        raise SystemExit(
+            "EQUITY_ENGINE_ADMIN_DB_URL (a superuser URL) is required for --ensure-role"
+        )
     app = make_url(DATABASE_URL)
     admin = create_engine(admin_url, isolation_level="AUTOCOMMIT")
     with admin.connect() as connection:
@@ -60,21 +63,24 @@ def ensure_role() -> None:
         ).first():
             # CREATE ROLE takes no bind parameters; the password is quoted as a literal.
             password = str(app.password).replace("'", "''")
-            connection.exec_driver_sql(f"CREATE ROLE \"{app.username}\" LOGIN PASSWORD '{password}'")
+            connection.exec_driver_sql(
+                f"CREATE ROLE \"{app.username}\" LOGIN PASSWORD '{password}'"
+            )
             print(f"  created role {app.username}")
         if not connection.execute(
             text("SELECT 1 FROM pg_database WHERE datname = :d"), {"d": app.database}
         ).first():
-            connection.exec_driver_sql(f'CREATE DATABASE "{app.database}" OWNER "{app.username}"')
+            connection.exec_driver_sql(
+                f'CREATE DATABASE "{app.database}" OWNER "{app.username}"'
+            )
             print(f"  created database {app.database}")
     print("  role and database ready")
 
 
 def drop_app() -> None:
-    from sqlalchemy import text
-
     from equity_engine.config import DATABASE_APP_SCHEMA
     from equity_engine.db import engine
+    from sqlalchemy import text
 
     answer = input(
         f"DROP SCHEMA {DATABASE_APP_SCHEMA} — the signal ledger is lost. Type the schema name to confirm: "
@@ -88,15 +94,17 @@ def drop_app() -> None:
 
 def ensure_app_schema() -> None:
     """Create the app schema and every table that is missing; adopt a pre-split exclusion_rule."""
-    from sqlalchemy import text
-
     from equity_engine.config import DATABASE_APP_SCHEMA, DATABASE_SCHEMA
     from equity_engine.db import engine
+    from sqlalchemy import text
 
-    sql = APP_SCHEMA_FILE.read_text(encoding="utf-8").replace("__APP_SCHEMA__", DATABASE_APP_SCHEMA)
+    sql = APP_SCHEMA_FILE.read_text(encoding="utf-8").replace(
+        "__APP_SCHEMA__", DATABASE_APP_SCHEMA
+    )
     with engine.begin() as connection:
         fresh = not connection.execute(
-            text("SELECT 1 FROM pg_namespace WHERE nspname = :s"), {"s": DATABASE_APP_SCHEMA}
+            text("SELECT 1 FROM pg_namespace WHERE nspname = :s"),
+            {"s": DATABASE_APP_SCHEMA},
         ).first()
         legacy_rules = connection.execute(
             text(
@@ -105,37 +113,52 @@ def ensure_app_schema() -> None:
             {"s": DATABASE_SCHEMA},
         ).first()
         if legacy_rules:
-            connection.execute(text(f"CREATE SCHEMA IF NOT EXISTS {DATABASE_APP_SCHEMA}"))
             connection.execute(
-                text(f"ALTER TABLE {DATABASE_SCHEMA}.exclusion_rule SET SCHEMA {DATABASE_APP_SCHEMA}")
+                text(f"CREATE SCHEMA IF NOT EXISTS {DATABASE_APP_SCHEMA}")
             )
-            print(f"  moved exclusion_rule from {DATABASE_SCHEMA} to {DATABASE_APP_SCHEMA} (rows kept)")
+            connection.execute(
+                text(
+                    f"ALTER TABLE {DATABASE_SCHEMA}.exclusion_rule SET SCHEMA {DATABASE_APP_SCHEMA}"
+                )
+            )
+            print(
+                f"  moved exclusion_rule from {DATABASE_SCHEMA} to {DATABASE_APP_SCHEMA} (rows kept)"
+            )
         connection.exec_driver_sql(sql)
         if fresh:
             # A fresh schema already contains every migration's effect; record them as applied.
             for path in sorted(APP_MIGRATIONS_DIR.glob("*.sql")):
                 connection.execute(
-                    text("INSERT INTO schema_migration (name) VALUES (:n) ON CONFLICT DO NOTHING"),
+                    text(
+                        "INSERT INTO schema_migration (name) VALUES (:n) ON CONFLICT DO NOTHING"
+                    ),
                     {"n": path.name},
                 )
     print(f"  app schema {DATABASE_APP_SCHEMA} {'created' if fresh else 'present'}")
 
 
 def migrate_app() -> None:
-    from sqlalchemy import text
-
     from equity_engine.config import DATABASE_APP_SCHEMA
     from equity_engine.db import engine
+    from sqlalchemy import text
 
     applied_count = 0
     with engine.begin() as connection:
-        connection.execute(text(f"SET LOCAL search_path = {DATABASE_APP_SCHEMA}, public"))
-        applied = {found[0] for found in connection.execute(text("SELECT name FROM schema_migration"))}
+        connection.execute(
+            text(f"SET LOCAL search_path = {DATABASE_APP_SCHEMA}, public")
+        )
+        applied = {
+            found[0]
+            for found in connection.execute(text("SELECT name FROM schema_migration"))
+        }
         for path in sorted(APP_MIGRATIONS_DIR.glob("*.sql")):
             if path.name in applied:
                 continue
             connection.exec_driver_sql(path.read_text(encoding="utf-8"))
-            connection.execute(text("INSERT INTO schema_migration (name) VALUES (:n)"), {"n": path.name})
+            connection.execute(
+                text("INSERT INTO schema_migration (name) VALUES (:n)"),
+                {"n": path.name},
+            )
             print(f"  applied {path.name}")
             applied_count += 1
     print(f"  {applied_count} app migration(s) applied")
@@ -159,7 +182,9 @@ def seed() -> None:
     keys = {line["engine_key"] for line in engines}
     orphans = sorted(set(IMPLEMENTED) - keys)
     if orphans:
-        raise SystemExit(f"engines implemented in code but missing from engine.csv: {orphans}")
+        raise SystemExit(
+            f"engines implemented in code but missing from engine.csv: {orphans}"
+        )
     with transaction() as connection:
         execute_many(
             connection,
@@ -182,13 +207,30 @@ def seed() -> None:
             """,
             engines,
         )
+        psus = [
+            line | {"parent": line["parent"] or None, "note": line["note"] or None}
+            for line in _csv_rows("psu.csv")
+        ]
+        execute_many(
+            connection,
+            """
+            INSERT INTO psu (symbol, name, owner, category, parent, note)
+            VALUES (:symbol, :name, :owner, :category, :parent, :note)
+            ON CONFLICT (symbol) DO UPDATE SET name = EXCLUDED.name, owner = EXCLUDED.owner,
+                category = EXCLUDED.category, parent = EXCLUDED.parent, note = EXCLUDED.note
+            """,
+            psus,
+        )
     print(
-        f"  seeded {len(engines)} engines ({len(IMPLEMENTED)} implemented) and {len(rules)} exclusion rules"
+        f"  seeded {len(engines)} engines ({len(IMPLEMENTED)} implemented), {len(rules)} exclusion rules "
+        f"and {len(psus)} government-ownership tags"
     )
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Equity Engine app schema + seed (never the data schema)")
+    parser = argparse.ArgumentParser(
+        description="Equity Engine app schema + seed (never the data schema)"
+    )
     parser.add_argument("--env", default=os.getenv("EQUITY_ENGINE_ENV", "dev"))
     parser.add_argument("--seed-only", action="store_true")
     parser.add_argument("--drop-app", action="store_true")

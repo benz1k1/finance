@@ -19,10 +19,12 @@ _ITEMS = (
     ("Signals", "/signal", "mdi-pulse", "Signals"),
     ("Engines", "/engine", "mdi-engine-outline", "Signals"),
     ("Screener", "/screen", "mdi-filter-variant", "Signals"),
-    ("Securities", "/security", "mdi-format-list-bulleted", "Universe"),
+    ("Equities", "/equities", "mdi-format-list-bulleted", "Universe"),
     ("Ownership", "/ownership", "mdi-chart-pie-outline", "Universe"),
+    ("Deal clients", "/client", "mdi-account-cash-outline", "Universe"),
     ("Exclusions", "/exclusion", "mdi-cancel", "Universe"),
     ("Data health", "/health", "mdi-database-check-outline", "Data"),
+    ("Terminology", "/glossary", "mdi-book-open-variant", "Data"),
 )
 
 

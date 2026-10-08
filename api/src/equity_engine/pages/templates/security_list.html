@@ -1,25 +1,28 @@
 {% extends "base.html" %}
-{% block title %}Securities · Equity Engine{% endblock %}
-{% block heading %}Securities{% endblock %}
+{% block title %}Equities · Equity Engine{% endblock %}
+{% block heading %}Equities{% endblock %}
 {% block header_actions %}
 <span class="loading loading-spinner loading-xs htmx-indicator" id="search-busy"></span>
-<form class="flex items-center gap-2" hx-get="/security" hx-trigger="input changed delay:250ms from:[name=q], search from:[name=q], change from:[name=all]" hx-target="#security-rows" hx-indicator="#search-busy" hx-push-url="true">
+<form class="flex items-center gap-2" hx-get="/equities" hx-trigger="input changed delay:250ms from:[name=q], search from:[name=q], change from:[name=all], change from:[name=govt]" hx-target="#security-rows" hx-indicator="#search-busy" hx-push-url="true">
   <input type="search" name="q" value="{{ q }}" placeholder="Symbol, name or ISIN" autofocus class="input input-bordered input-sm w-64">
+  <label class="label cursor-pointer gap-1 text-xs" title="Only central and state government undertakings (PSU-promoted joint ventures are left out)"><input type="checkbox" name="govt" value="true" class="toggle toggle-warning toggle-xs" {% if govt %}checked{% endif %}><i class="mdi mdi-bank-outline"></i> govt stocks</label>
   <label class="label cursor-pointer gap-1 text-xs"><input type="checkbox" name="all" value="true" class="checkbox checkbox-xs" {% if all %}checked{% endif %}>all NSE</label>
 </form>
 {% endblock %}
 {% block content %}
 <div class="card bg-base-100 shadow-sm">
   <div class="card-body p-4">
-    <div class="overflow-x-auto">
+    {# columns: key, label, numeric, default-descending #}
+    {% set columns = [('symbol', 'Symbol', false, false), ('name', 'Name', false, false), ('stance', 'Stance', true, false), ('series', 'Series', false, false), ('segment', 'Segment', false, false), ('mcap', 'Market cap (₹ cr)', true, true), ('close', 'Close', true, true), ('pe', 'P/E', true, false), ('sector-pe', 'Sector P/E', true, false), ('gap', 'At sector P/E', true, true), ('deliv', 'Delivery %', true, true), ('listed', 'Listed', false, true)] %}
+    <div class="overflow-x-auto" x-data="{ key: '', desc: true, sort(k, numeric, descFirst) { if (this.key === k) { this.desc = !this.desc } else { this.key = k; this.desc = descFirst } ; const body = document.getElementById('security-rows'); const rows = Array.from(body.querySelectorAll('tr[data-row]')); const ds = k.replace(/-([a-z])/g, (m, c) => c.toUpperCase()); rows.sort((a, b) => { const av = a.dataset[ds], bv = b.dataset[ds]; const an = av === '' || av === undefined ? null : (numeric ? parseFloat(av) : av), bn = bv === '' || bv === undefined ? null : (numeric ? parseFloat(bv) : bv); if (an === null) return 1; if (bn === null) return -1; return (an < bn ? -1 : an > bn ? 1 : 0) * (this.desc ? -1 : 1) }); rows.forEach(r => body.appendChild(r)) } }">
       <table class="table table-sm">
         <thead>
-          <tr><th>Symbol</th><th>Name</th><th>Stance</th><th>Series</th><th>Segment</th><th class="n">Market cap (₹ cr)</th><th class="n">Close</th><th class="n">Delivery %</th><th>Listed</th></tr>
+          <tr>{% for key, label, numeric, desc_first in columns %}<th class="{% if numeric and key != 'stance' %}n {% endif %}cursor-pointer select-none hover:text-primary" @click="sort('{{ key }}', {{ 'true' if numeric else 'false' }}, {{ 'true' if desc_first else 'false' }})" title="Sort by {{ label }}">{{ label }} <span x-show="key === '{{ key }}'" x-cloak><i class="mdi" :class="desc ? 'mdi-arrow-down' : 'mdi-arrow-up'"></i></span></th>{% endfor %}</tr>
         </thead>
         <tbody id="security-rows">{% include "_security_rows.html" %}</tbody>
       </table>
     </div>
-    <p class="text-xs text-base-content/60">{% if all %}Every NSE security{% else %}{{ FOCUS_CHOICES[current_focus(request)] }} constituents (tick "all NSE" for the rest){% endif %}; largest market cap first; at most {{ limit }} rows. Market cap is from NSE's daily reports file for each security's newest trade date.</p>
+    <p class="text-xs text-base-content/60">{% if govt %}Government-owned only — {% endif %}{% if all %}Every NSE security{% else %}{{ FOCUS_CHOICES[current_focus(request)] }} constituents (tick "all NSE" for the rest){% endif %}; largest market cap first; at most {{ limit }} rows. Click a heading to sort the rows shown; click again to reverse. Market cap is from NSE's daily reports file for each security's newest trade date.</p>
   </div>
 </div>
 {% endblock %}

@@ -167,11 +167,25 @@ def run(args: argparse.Namespace) -> None:
     if args.command == "backtest":
         index, count = (int(part) for part in args.shard.split("/"))
         done = outcomes_service.backtest(
-            date.fromisoformat(args.first), date.fromisoformat(args.last), args.step, (index, count)
+            date.fromisoformat(args.first),
+            date.fromisoformat(args.last),
+            args.step,
+            (index, count),
         )
         print(f"backtest shard {args.shard}: {len(done)} runs")
         if args.mark:
             print(f"outcomes marked: {dict(outcomes_service.mark())}")
+        return
+    if args.command == "global":
+        from equity_engine.service import global_markets
+
+        print(f"global indexes: {global_markets.load_all()}")
+        return
+    if args.command == "clients-meta":
+        from equity_engine.service import client_meta
+
+        index, count = (int(part) for part in args.shard.split("/"))
+        print(f"client metadata shard {args.shard}: {client_meta.lookup_all(args.limit, (index, count))}")
         return
     if args.command == "retune":
         report = outcomes_service.stance_retune(args.horizon, date.fromisoformat(args.split))
@@ -182,7 +196,8 @@ def run(args: argparse.Namespace) -> None:
         print("\ntraining period, per engine and direction (weight is the current table's):")
         weights = stance_module.ENGINE_WEIGHT
         for (engine_key, direction), (n, hits, total) in sorted(
-            report["table"].items(), key=lambda item: (item[0][1], -item[1][1] / item[1][0])
+            report["table"].items(),
+            key=lambda item: (item[0][1], -item[1][1] / item[1][0]),
         ):
             print(
                 f"  {engine_key:26s} {direction:4s} n={n:6d} hit={100 * hits / n:5.1f}% "
@@ -248,13 +263,23 @@ def run(args: argparse.Namespace) -> None:
                 for day in days:
                     outcomes += ingest_prices(day, fetcher, reload=args.reload)
         if args.command == "deals":
-            first, last = date.fromisoformat(args.first + "-01"), date.fromisoformat(args.last + "-01")
+            first, last = (
+                date.fromisoformat(args.first + "-01"),
+                date.fromisoformat(args.last + "-01"),
+            )
             for name in ("nse_bulk_deal_history", "nse_block_deal_history"):
                 outcomes += ingest_months(BY_ID[name], first, last, fetcher, reload=args.reload)
         if args.command == "ownership":
-            first, last = date.fromisoformat(args.first + "-01"), date.fromisoformat(args.last + "-01")
+            first, last = (
+                date.fromisoformat(args.first + "-01"),
+                date.fromisoformat(args.last + "-01"),
+            )
             outcomes += ingest_months(
-                BY_ID["nse_shareholding_filings"], first, last, fetcher, reload=args.reload
+                BY_ID["nse_shareholding_filings"],
+                first,
+                last,
+                fetcher,
+                reload=args.reload,
             )
             print(
                 f"shareholding XBRL: {dict(ingest_shareholding_patterns(fetcher, args.workers, limit=args.limit))}"
@@ -267,8 +292,15 @@ def run(args: argparse.Namespace) -> None:
             if args.extract:
                 print(f"LLM extraction: {dict(documents_service.extract(args.limit, kinds))}")
         if args.command == "events":
-            first, last = date.fromisoformat(args.first + "-01"), date.fromisoformat(args.last + "-01")
-            for name in ("nse_announcements", "nse_board_meetings", "nse_credit_ratings"):
+            first, last = (
+                date.fromisoformat(args.first + "-01"),
+                date.fromisoformat(args.last + "-01"),
+            )
+            for name in (
+                "nse_announcements",
+                "nse_board_meetings",
+                "nse_credit_ratings",
+            ):
                 outcomes += ingest_months(BY_ID[name], first, last, fetcher, reload=args.reload)
         if args.command == "derivatives":
             source = BY_ID["nse_fo_bhav"]
@@ -276,7 +308,10 @@ def run(args: argparse.Namespace) -> None:
                 if source.covers(day) and day.weekday() < 5:
                     outcomes.append(ingest_one(source, day, fetcher, reload=args.reload))
         if args.command == "results":
-            first, last = date.fromisoformat(args.first + "-01"), date.fromisoformat(args.last + "-01")
+            first, last = (
+                date.fromisoformat(args.first + "-01"),
+                date.fromisoformat(args.last + "-01"),
+            )
             if args.retry_skipped:
                 with transaction() as connection:
                     execute(connection, "DELETE FROM results_xbrl_skip")
@@ -298,6 +333,12 @@ def run(args: argparse.Namespace) -> None:
         fetcher.close()
     _report(outcomes, fetcher.requests_made)
     if args.command == "daily":
+        from equity_engine.service import global_markets
+
+        try:
+            print(f"global indexes: {global_markets.load_all()}")
+        except Exception as error:  # noqa: BLE001 — a dead Yahoo must not stop the Indian run
+            print(f"global indexes: not refreshed ({error}); engines use the last stored closes")
         summary = signals.run_all(None)
         print(f"engines as of {summary['as_of']}: {summary['signals']} signals, {summary['stances']} stances")
 
@@ -350,7 +391,9 @@ def main() -> None:
     results.add_argument("--limit", type=int, default=None)
     results.add_argument("--reload", action="store_true")
     results.add_argument(
-        "--retry-skipped", action="store_true", help="try again the filings a previous run could not load"
+        "--retry-skipped",
+        action="store_true",
+        help="try again the filings a previous run could not load",
     )
     results.add_argument(
         "--index",
@@ -364,7 +407,12 @@ def main() -> None:
     )
     profiles = commands.add_parser("profiles")
     for command in (ownership, profiles):
-        command.add_argument("--workers", type=int, default=1, help="download this many XBRL files at once")
+        command.add_argument(
+            "--workers",
+            type=int,
+            default=1,
+            help="download this many XBRL files at once",
+        )
         command.add_argument("--interval", type=float, help="seconds between archive request starts")
         command.add_argument("--limit", type=int, help="read at most this many filings (for a trial run)")
     commands.add_parser("bootstrap", help="create the data schema if it does not exist (never drops)")
@@ -383,13 +431,29 @@ def main() -> None:
         help="i/n: this process takes every n-th chosen date from i (run n in parallel)",
     )
     backtest.add_argument(
-        "--mark", action="store_true", help="mark outcomes when done (run once, after every shard)"
+        "--mark",
+        action="store_true",
+        help="mark outcomes when done (run once, after every shard)",
     )
     reports = commands.add_parser("reports", help="re-read cached daily reports bundles for a date range")
     reports.add_argument("--from", dest="first", required=True)
     reports.add_argument("--to", dest="last", required=True)
+    commands.add_parser("global", help="fetch the five global index histories (levels only) and upsert them")
+    clients_meta = commands.add_parser(
+        "clients-meta",
+        help="one-time Wikipedia lookup of deal counterparties not yet in client_meta",
+    )
+    clients_meta.add_argument(
+        "--limit", type=int, default=None, help="stop after this many names (resumable)"
+    )
+    clients_meta.add_argument(
+        "--shard",
+        default="0/1",
+        help="i/n: this process takes every n-th pending name from i",
+    )
     retune = commands.add_parser(
-        "retune", help="evaluate the stance's engine weights against the backtest ledger"
+        "retune",
+        help="evaluate the stance's engine weights against the backtest ledger",
     )
     retune.add_argument("--horizon", type=int, default=252, choices=(21, 63, 126, 252, 504))
     retune.add_argument(

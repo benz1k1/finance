@@ -70,12 +70,13 @@ NONE, LOW, MEDIUM, HIGH = "NONE", "LOW", "MEDIUM", "HIGH"
 # Net weighted score needed for each stance; symmetric for short.
 LEAN_AT, FULL_AT = 0.6, 1.5
 
+# Labels only (user decision 2026-10-04: buy / sell wording; the keys and the arithmetic are unchanged).
 STANCE_LABEL = {
-    LONG: "Long",
-    LEAN_LONG: "Lean long",
+    LONG: "Buy",
+    LEAN_LONG: "Lean buy",
     NEUTRAL: "Neutral",
-    LEAN_SHORT: "Lean short",
-    SHORT: "Short",
+    LEAN_SHORT: "Lean sell",
+    SHORT: "Sell",
     AVOID: "Avoid",
 }
 CONVICTION_LABEL = {NONE: "No signals", LOW: "Low", MEDIUM: "Medium", HIGH: "High"}

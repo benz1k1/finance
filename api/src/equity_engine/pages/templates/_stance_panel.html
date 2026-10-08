@@ -17,7 +17,7 @@
         <div class="text-xs text-base-content/60 flex justify-between"><span>{{ stance.bull_count }} bullish · {{ stance.bull_score | num(2) }} pts</span><span>{{ stance.bear_count }} bearish · {{ stance.bear_score | num(2) }} pts</span></div>
         {% set total = (stance.bull_score + stance.bear_score) %}
         <div class="flex h-3 w-full overflow-hidden rounded bg-base-200 {% if stance.stance == 'AVOID' %}opacity-40{% endif %}" title="weighted bullish points (left) against bearish (right)">
-          {% if total > 0 %}<div class="bg-success" style="width: {{ 100 * stance.bull_score / total }}%"></div><div class="bg-info" style="width: {{ 100 * stance.bear_score / total }}%"></div>{% endif %}
+          {% if total > 0 %}<div class="bg-success" style="width: {{ 100 * stance.bull_score / total }}%"></div><div class="bg-error" style="width: {{ 100 * stance.bear_score / total }}%"></div>{% endif %}
         </div>
         <div class="text-xs text-base-content/60 mt-1">6–12 month horizon · stance v{{ stance.version }} · run of {{ run.as_of | fmt_date }} · weights: confirmed 1.0, emerging 0.6, early 0.3</div>
       </div>
@@ -33,7 +33,7 @@
         {% else %}<p class="text-sm text-base-content/60">Nothing bullish fired.</p>{% endfor %}
       </div>
       <div>
-        <h3 class="text-xs font-semibold uppercase tracking-wide text-info mb-1">Strongest against</h3>
+        <h3 class="text-xs font-semibold uppercase tracking-wide text-error mb-1">Strongest against</h3>
         {% for s in against_signals %}
         <div class="text-sm mb-1"><a class="link link-hover font-medium" href="/engine/{{ s.engine_key }}">{{ s.engine_name }}</a> {% include "_signal_badges.html" %}<br><span class="text-xs">{{ s.headline }}</span></div>
         {% else %}<p class="text-sm text-base-content/60">Nothing bearish fired.</p>{% endfor %}
@@ -51,14 +51,22 @@
     {% endif %}
 
     <div class="divider my-2"></div>
-    <h3 class="text-xs font-semibold uppercase tracking-wide text-base-content/60 mb-2">All engines</h3>
+    {% set ns = namespace(fired=0, silent=0) %}{% for group, items in engine_groups.items() %}{% for e in items %}{% if e.fired %}{% set ns.fired = ns.fired + 1 %}{% else %}{% set ns.silent = ns.silent + 1 %}{% endif %}{% endfor %}{% endfor %}
+    <div x-data="{ showAll: false }" id="all-engines">
+    <div class="flex items-center gap-2 mb-2">
+      <h3 class="text-xs font-semibold uppercase tracking-wide text-base-content/60">All engines <span class="font-normal normal-case">— {{ ns.fired }} fired</span></h3>
+      {% if ns.silent %}<button type="button" class="btn btn-ghost btn-xs ml-auto" id="toggle-silent-engines" @click="showAll = !showAll" x-text="showAll ? 'Hide the {{ ns.silent }} without a signal' : 'Show the {{ ns.silent }} without a signal'">Show the {{ ns.silent }} without a signal</button>{% endif %}
+    </div>
+    {% if not ns.fired %}<p class="text-xs text-base-content/60 mb-2" x-show="!showAll">No engine fired on this security in the newest run.</p>{% endif %}
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" id="engine-grid">
       {% for group, items in engine_groups.items() %}
-      <div>
+      {% set group_fired = items | selectattr('fired') | list | length %}
+      <div {% if not group_fired %}x-show="showAll" x-cloak{% endif %}>
         <div class="text-xs font-medium mb-1">{{ group | replace('_', ' ') | capitalize }}</div>
         <div class="flex flex-col gap-1">
           {% for e in items %}
-          <div class="flex items-center justify-between gap-2 rounded px-2 py-1 text-xs {% if e.fired %}bg-base-200{% else %}bg-base-100 border border-base-300{% endif %}" title="{{ e.description }}">
+          {% set fired_direction = e.fired[0].direction if e.fired else none %}
+          <div {% if not e.fired %}x-show="showAll" x-cloak{% endif %} class="flex items-center justify-between gap-2 rounded px-2 py-1 text-xs {% if fired_direction == 'BULL' %}bg-success/15 border border-success/40{% elif fired_direction == 'BEAR' %}bg-error/15 border border-error/40{% elif fired_direction == 'GATE' %}bg-warning/20 border border-warning/50{% elif e.fired %}bg-base-200{% else %}bg-base-100 border border-base-300{% endif %}" title="{{ e.description }}">
             <a class="link link-hover truncate" href="/engine/{{ e.engine_key }}">{{ e.name }}</a>
             {% if e.fired %}{% set s = e.fired[0] %}<span class="whitespace-nowrap"><span class="{{ DIRECTION_CLASS[s.direction] }} font-medium">{{ s.signal_type | replace('_', ' ') | lower }}</span> <span class="badge badge-xs {{ STAGE_CLASS[s.stage] }}">{{ s.stage | lower }}</span></span>
             {% elif e.status == 'LIVE' %}<span class="text-base-content/50 whitespace-nowrap">no signal</span>
@@ -69,6 +77,7 @@
         </div>
       </div>
       {% endfor %}
+    </div>
     </div>
     {% if stance_history | length > 1 %}
     <div class="mt-3 text-xs text-base-content/60 flex flex-wrap items-center gap-1"><span class="mr-1">Stance history:</span>{% for h in stance_history %}<span class="badge badge-xs {{ STANCE_CLASS[h.stance] }}" title="{{ CONVICTION_LABEL[h.conviction] }}{% if h.gate %} — {{ h.gate }}{% endif %}">{{ h.as_of | fmt_date }} · {{ STANCE_LABEL[h.stance] }}</span>{% endfor %}</div>

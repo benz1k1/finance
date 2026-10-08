@@ -14,6 +14,8 @@
     .htmx-indicator { opacity: 0; transition: opacity 150ms ease-in; }
     .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { opacity: 1; }
     td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+    /* badges never wrap: a two-word stance such as "Lean buy" must stay on one line inside its border */
+    .badge { white-space: nowrap; }
   </style>
   {% block head %}{% endblock %}
 </head>
@@ -34,7 +36,7 @@
     {% set focus = current_focus(request) %}
     <div class="join px-2 py-1 w-full" id="focus-toggle" x-show="!sidebarCollapsed" title="Focus: which index the pages show. Engines always run over the Nifty 500.">
       {% for code, label in FOCUS_CHOICES.items() %}
-      <a href="/focus/{{ code }}?next={{ request.url.path | urlencode }}{% if request.url.query %}{{ ('?' ~ request.url.query) | urlencode }}{% endif %}" class="join-item btn btn-xs flex-1 {% if code == focus %}btn-primary{% else %}btn-ghost{% endif %}">{{ label }}</a>
+      <a href="/focus/{{ code }}?next={{ request.url.path | urlencode }}{% if request.url.query %}{{ ('?' ~ request.url.query) | urlencode }}{% endif %}" class="join-item btn btn-xs flex-1 px-1 whitespace-nowrap {% if code == focus %}btn-primary{% else %}btn-ghost{% endif %}" title="Show {{ label }} constituents">{{ label | replace('Nifty ', 'N') }}</a>
       {% endfor %}
     </div>
     <ul class="menu menu-sm flex-nowrap flex-grow overflow-y-auto overflow-x-hidden py-2" :class="sidebarCollapsed ? 'px-0' : 'px-2'">

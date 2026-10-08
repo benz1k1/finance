@@ -32,6 +32,7 @@ from equity_engine.engines.fundamentals import (
     ValueTrap,
 )
 from equity_engine.engines.gates import Investability, ManipulationRisk
+from equity_engine.engines.global_context import GlobalResilience, HistoricalPE
 from equity_engine.engines.market import MarketRegime, SectorRotation
 from equity_engine.engines.narrative import (
     DocumentDiff,
@@ -44,6 +45,8 @@ from equity_engine.engines.price import RelativeStrength, TechnicalPrice, Volume
 IMPLEMENTED: dict[str, Engine] = {
     engine.key: engine
     for engine in (
+        GlobalResilience(),
+        HistoricalPE(),
         Investability(),
         ManipulationRisk(),
         RelativeStrength(),

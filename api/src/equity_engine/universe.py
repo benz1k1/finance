@@ -12,7 +12,12 @@ INDEX = "nifty500"
 
 # The UI focus (spec §119): a view filter inside the universe, chosen in the sidebar and kept in
 # a cookie. Engines always run over the whole universe; the focus only narrows what pages show.
-FOCUS_CHOICES = {"nifty50": "Nifty 50", "nifty500": "Nifty 500"}
+FOCUS_CHOICES = {
+    "nifty50": "Nifty 50",
+    "nifty100": "Nifty 100",
+    "nifty200": "Nifty 200",
+    "nifty500": "Nifty 500",
+}
 DEFAULT_FOCUS = "nifty500"
 
 

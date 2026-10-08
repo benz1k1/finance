@@ -10,12 +10,13 @@
 </div>
 <div class="card bg-base-100 shadow-sm"><div class="card-body p-4">
   <div class="overflow-x-auto"><table class="table table-sm" id="engine-table">
-    <thead><tr><th>Group</th><th>Engine</th><th>§</th><th>Phase</th><th>Radar</th><th>Status</th><th>Needs</th><th class="n">Signals</th><th>By stage</th></tr></thead>
+    <thead><tr><th>Group</th><th>Engine</th><th>What it detects — example</th><th>§</th><th>Phase</th><th>Radar</th><th>Status</th><th>Needs</th><th class="n">Signals</th><th>By stage</th></tr></thead>
     <tbody>
     {% for e in engines %}
     <tr>
       <td class="text-xs text-base-content/60">{{ e.group | replace('_', ' ') | lower }}</td>
-      <td><a class="link link-primary font-medium" href="/engine/{{ e.engine_key }}">{{ e.name }}</a>{% if e.version %} <span class="text-xs text-base-content/60">v{{ e.version }}</span>{% endif %}</td>
+      <td class="whitespace-nowrap"><a class="link link-primary font-medium" href="/engine/{{ e.engine_key }}">{{ e.name }}</a>{% if e.version %} <span class="text-xs text-base-content/60">v{{ e.version }}</span>{% endif %}</td>
+      <td class="text-xs max-w-md {% if not e.implemented %}text-base-content/60{% endif %}">{{ e.example or '—' }}</td>
       <td>{{ e.spec_section }}</td>
       <td>{{ e.phase }}</td>
       <td class="text-xs">{{ e.radar | lower if e.radar != 'NONE' else '—' }}</td>

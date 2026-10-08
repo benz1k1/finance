@@ -11,9 +11,14 @@ from equity_engine.service import outcomes
 class _Snap:
     """Just enough of a Snapshot for the fundamentals engines."""
 
-    def __init__(self, histories: dict[str, list[dict[str, Any]]], market_caps: dict[str, float] | None = None):
+    def __init__(
+        self, histories: dict[str, list[dict[str, Any]]], market_caps: dict[str, float] | None = None
+    ):
         self.fundamentals = histories
-        self.price_by_isin = {isin: {"market_cap": cap, "raw_close": 100.0, "close": 100.0} for isin, cap in (market_caps or {}).items()}
+        self.price_by_isin = {
+            isin: {"market_cap": cap, "raw_close": 100.0, "close": 100.0}
+            for isin, cap in (market_caps or {}).items()
+        }
         self.industry: dict[str, dict[str, Any]] = {}
         self.results_reactions: list[dict[str, Any]] = []
 
@@ -21,18 +26,34 @@ class _Snap:
         return Decimal("100")
 
 
-def _history(isin: str, pats: list[float], revenues: list[float] | None = None, **extra: Any) -> list[dict[str, Any]]:
+def _history(
+    isin: str, pats: list[float], revenues: list[float] | None = None, **extra: Any
+) -> list[dict[str, Any]]:
     """Newest first. ``pats``/``revenues`` are in crore and oldest-last like the engines expect."""
     out = []
     end = date(2026, 6, 30)
     for i, pat in enumerate(pats):
-        period_end = date(end.year - (i // 4), [6, 3, 12, 9][i % 4] if False else end.month, 30) if False else end - timedelta(days=91 * i)
+        period_end = (
+            date(end.year - (i // 4), [6, 3, 12, 9][i % 4] if False else end.month, 30)
+            if False
+            else end - timedelta(days=91 * i)
+        )
         row = {
-            "isin": isin, "symbol": isin, "period_end": period_end, "consolidated": True,
-            "broadcast_at": datetime(2026, 7, 15), "is_bank": False, "is_lender": False,
-            "q_pat": pat * 1e7, "q_pat_owners": pat * 1e7,
-            "q_revenue": (revenues[i] if revenues else 100.0) * 1e7, "q_other_income": 0.0,
-            "q_finance_costs": 1e7, "q_depreciation": 2e7, "q_pbt": pat * 1e7 * 1.3, "q_exceptional": 0.0,
+            "isin": isin,
+            "symbol": isin,
+            "period_end": period_end,
+            "consolidated": True,
+            "broadcast_at": datetime(2026, 7, 15),
+            "is_bank": False,
+            "is_lender": False,
+            "q_pat": pat * 1e7,
+            "q_pat_owners": pat * 1e7,
+            "q_revenue": (revenues[i] if revenues else 100.0) * 1e7,
+            "q_other_income": 0.0,
+            "q_finance_costs": 1e7,
+            "q_depreciation": 2e7,
+            "q_pbt": pat * 1e7 * 1.3,
+            "q_exceptional": 0.0,
             "q_eps_basic": pat / 10,
         }
         row.update({k: (v[i] if isinstance(v, list) else v) for k, v in extra.items()})
@@ -55,8 +76,12 @@ def test_earnings_acceleration_needs_rising_yoy_growth():
 
 
 def test_deleveraging_and_leverage_spike():
-    down = _history("C", [5] * 8, bs_borrowings=[50e7] + [None] * 3 + [100e7] + [None] * 3, bs_equity=[100e7] * 8)
-    up = _history("D", [5] * 8, bs_borrowings=[150e7] + [None] * 3 + [100e7] + [None] * 3, bs_equity=[100e7] * 8)
+    down = _history(
+        "C", [5] * 8, bs_borrowings=[50e7] + [None] * 3 + [100e7] + [None] * 3, bs_equity=[100e7] * 8
+    )
+    up = _history(
+        "D", [5] * 8, bs_borrowings=[150e7] + [None] * 3 + [100e7] + [None] * 3, bs_equity=[100e7] * 8
+    )
     found = fe.Deleveraging().evaluate(_Snap({"C": down, "D": up}))  # type: ignore[arg-type]
     assert {s.signal_type for s in found} == {"DELEVERAGING", "LEVERAGE_SPIKE"}
 
@@ -84,7 +109,10 @@ def test_credit_distress_gate_and_cash_runway():
 
 
 def test_outcome_measure_return_excess_and_drawdown():
-    path = [{"trade_date": date(2026, 1, 1) + timedelta(days=i), "close": c} for i, c in enumerate([110, 90, 95, 120, 130])]
+    path = [
+        {"trade_date": date(2026, 1, 1) + timedelta(days=i), "close": c}
+        for i, c in enumerate([110, 90, 95, 120, 130])
+    ]
     measured = outcomes._measure(path, 100.0, 5, universe_return=10.0)
     assert measured is not None
     assert measured["return_pct"] == 30.0 and measured["excess_pct"] == 20.0

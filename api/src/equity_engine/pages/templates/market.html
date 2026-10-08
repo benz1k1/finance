@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Market history · Equity Engine{% endblock %}
+{% block heading %}Market history <span class="font-normal text-base-content/60">— sector rotation and breadth over time</span>{% endblock %}
+{% block header_actions %}
+<span class="loading loading-spinner loading-xs htmx-indicator" id="market-busy"></span>
+<a href="/" class="btn btn-ghost btn-xs"><i class="mdi mdi-arrow-left"></i> Radar</a>
+{% endblock %}
+{% block content %}
+{# everything the request needs lives inside the swapped partial, so a change never loses the range #}
+<form id="market-charts" hx-get="/market" hx-trigger="change" hx-target="#market-charts" hx-swap="innerHTML" hx-push-url="true" hx-indicator="#market-busy">
+  {% include "_market_charts.html" %}
+</form>
+{% endblock %}

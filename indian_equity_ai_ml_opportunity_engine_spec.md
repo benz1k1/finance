@@ -139,6 +139,8 @@
 -   [117. Company Profile: Products, Website, Brands, Ownership and Deals](#117-company-profile-products-website-brands-ownership-and-deals)
 -   [118. Engines on the UI: Radar, Signal Feed, Engine Catalogue and the Company Stance Panel](#118-engines-on-the-ui-radar-signal-feed-engine-catalogue-and-the-company-stance-panel)
 -   [118.1 Stance v2 and engine-output tests, 4 October 2026](#1181-stance-v2-and-engine-output-tests-4-october-2026)
+-   [120. Global Context and Global Resilience, 4 October 2026](#120-global-context-and-global-resilience-4-october-2026)
+-   [121. Historical P/E, 4 October 2026](#121-historical-pe-4-october-2026)
 
 ------------------------------------------------------------------------
 
@@ -4313,6 +4315,38 @@ decisions in their own right:
     securities for security-level engines, no float noise). Catalyst v2 lists the announcements it
     counted; sector rotation v2 signals only counted members.
 -   **Colours (user rule):** long = green, short = blue, avoid = grey. Red stays for risk and gates.
+-   **Pages added the same day:** `/glossary` (terminology with worked examples, `pages/glossary.py`),
+    engine examples on the catalogue and engine pages (`pages/engine_examples.py`), and `/client` +
+    `/client/{name}` — a deal counterparty's disclosed portfolio built from the bulk/block deal table
+    (§65): per security the quantity bought and sold, the net, average prices, and the net marked at
+    the newest close. It is only what NSE disclosed, never a holding statement, and the page says so.
+
+------------------------------------------------------------------------
+
+# 120. Global Context and Global Resilience, 4 October 2026
+
+Decision: the project stays NSE-only for stocks but reads five global **index levels** (S&P 500,
+Nikkei 225, DAX, Euro Stoxx 50, Shanghai Composite), daily from 1990, from Yahoo Finance's public
+chart endpoint; no foreign stock prices. The regime row records each index's 1- and 3-month return
+and position against its 200-day average, the median 3-month return, and a *global stress* flag
+(median ≤ −5% or three of five below their 200-day average). The Radar's World tile reads India's
+median stock against the world's median index so a fall can be attributed: in line with the tide,
+better, or worse.
+
+Engine **global_resilience** fires only while the world is in a drawdown: a security beating the
+global median 3-month return by 10 points with ROCE ≥ 12% and TTM profit not shrinking is
+RESILIENT_IN_GLOBAL_SELLOFF (confirmed when its 6-month return is positive); a name 10 points
+worse than the world with shrinking profit is GLOBAL_BETA_SELLOFF.
+
+# 121. Historical P/E, 4 October 2026
+
+Engine **historical_pe**: the company's own P/E on past stress dates (Indian median 3-month return
+≤ −10%) and expansion dates (≥ +10%), one per calendar month from the regime history, each computed
+point in time (close × shares outstanding disclosed by then ÷ TTM profit broadcast by then).
+BELOW_RECESSION_PE when today's P/E is ≥ 10% under the stress-date median with profit not
+shrinking; PE_YET_TO_DERATE when, in a stressed market, today's P/E is at or above the
+expansion-date median while profit shrinks. Limit: stress references exist only from 2019 (two
+episodes so far); NSE's archive holds bhavcopies back to 2000, loading them is a pending decision.
 
 ------------------------------------------------------------------------
 

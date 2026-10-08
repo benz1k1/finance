@@ -10,6 +10,7 @@ from datetime import UTC, date, datetime
 from typing import Any
 
 import orjson
+from fastapi import HTTPException
 from loguru import logger
 from sqlalchemy import Connection
 
@@ -97,11 +98,20 @@ def _write_regime(connection: Connection, run_id: str, day: date, snap: Snapshot
         connection,
         """
         INSERT INTO market_regime (run_id, as_of, regime, universe, above_200dma_pct, median_return_3m_pct,
-                                   advancing_1m_pct, sectors)
+                                   advancing_1m_pct, with_200dma, above_200dma, advancing_1m,
+                                   global_3m_pct, global_stress, global_indexes, sectors)
         VALUES (:run_id, :as_of, :regime, :universe, :above_200dma_pct, :median_return_3m_pct,
-                :advancing_1m_pct, CAST(:sectors AS jsonb))
+                :advancing_1m_pct, :with_200dma, :above_200dma, :advancing_1m,
+                :global_3m_pct, :global_stress, CAST(:global_indexes AS jsonb), CAST(:sectors AS jsonb))
         """,
-        described | {"run_id": run_id, "sectors": orjson.dumps(SectorRotation().industries(snap)).decode()},
+        described
+        | {
+            "run_id": run_id,
+            "global_indexes": orjson.dumps(described["global_indexes"]).decode()
+            if described["global_indexes"]
+            else None,
+            "sectors": orjson.dumps(SectorRotation().industries(snap)).decode(),
+        },
     )
 
 
@@ -481,6 +491,19 @@ def screen(
             "limit": limit,
         },
     )
+
+
+def parse_min_mcap(text: str) -> float | None:
+    """The screener's market-cap floor as typed: blank means none; anything else must be a number."""
+    cleaned = text.strip().replace(",", "")
+    if not cleaned:
+        return None
+    try:
+        return float(cleaned)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=422, detail=f"min_mcap must be a number in crore, not {text!r}"
+        ) from error
 
 
 def index_codes(connection: Connection) -> list[str]:

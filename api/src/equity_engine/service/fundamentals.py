@@ -369,3 +369,93 @@ def multiples(market_cap: float | None, history: list[dict[str, Any]]) -> dict[s
         "earnings_yield_pct": round(pat / market_cap * 100, 2) if pat else None,
         "market_cap": market_cap,
     }
+
+
+_INDUSTRY_PE = """
+    WITH me AS (
+        SELECT DISTINCT ON (c.isin) c.isin, c.industry FROM index_constituent_snapshot c
+         WHERE c.isin = :isin AND c.snapshot_date = (SELECT max(snapshot_date) FROM index_constituent_snapshot)
+         ORDER BY c.isin, CASE c.index_code WHEN 'nifty500' THEN 0 ELSE 1 END
+    ),
+    members AS (
+        SELECT DISTINCT c.isin, s.nse_symbol AS symbol FROM index_constituent_snapshot c
+          JOIN me ON me.industry = c.industry JOIN security s ON s.isin = c.isin
+         WHERE c.snapshot_date = (SELECT max(snapshot_date) FROM index_constituent_snapshot) AND c.index_code = 'nifty500'
+    ),
+    mcap AS (
+        SELECT DISTINCT ON (p.isin) p.isin, p.market_cap FROM price_daily p JOIN members m USING (isin)
+         WHERE p.market_cap IS NOT NULL AND p.series IN ('EQ', 'SM') ORDER BY p.isin, p.trade_date DESC
+    ),
+    quarters AS (
+        SELECT DISTINCT ON (q.symbol, q.period_end) q.symbol, q.period_end, q.q_pat
+          FROM fin_quarter q JOIN members m ON m.symbol = q.symbol
+         WHERE q.q_pat IS NOT NULL ORDER BY q.symbol, q.period_end DESC, q.consolidated DESC, q.broadcast_at DESC
+    ),
+    ranked AS (SELECT *, row_number() OVER (PARTITION BY symbol ORDER BY period_end DESC) AS rn FROM quarters),
+    ttm AS (SELECT symbol, sum(q_pat) AS pat, count(*) AS n FROM ranked WHERE rn <= 4 GROUP BY symbol HAVING count(*) = 4)
+    SELECT (SELECT industry FROM me) AS industry, m.symbol, mc.market_cap / t.pat AS pe
+      FROM members m JOIN mcap mc USING (isin) JOIN ttm t USING (symbol)
+     WHERE t.pat > 0
+"""
+
+
+def industry_pe(connection: Connection, isin: str) -> dict[str, Any] | None:
+    """The security's Nifty 500 industry, the median trailing P/E of its members with positive TTM
+    profit, and how many members that median rests on. None when the industry has under five."""
+    found = rows(connection, _INDUSTRY_PE, {"isin": isin})
+    pes = sorted(float(r["pe"]) for r in found)
+    if len(pes) < 5:
+        return None
+    middle = len(pes) // 2
+    median_pe = pes[middle] if len(pes) % 2 else (pes[middle - 1] + pes[middle]) / 2
+    return {"industry": found[0]["industry"], "median_pe": round(median_pe, 1), "members": len(pes)}
+
+
+_PE_TABLE = """
+    WITH members AS (
+        SELECT DISTINCT ON (c.isin) c.isin, c.industry, s.nse_symbol AS symbol
+          FROM index_constituent_snapshot c JOIN security s ON s.isin = c.isin
+         WHERE c.snapshot_date = (SELECT max(snapshot_date) FROM index_constituent_snapshot) AND c.index_code = 'nifty500'
+         ORDER BY c.isin
+    ),
+    mcap AS (
+        SELECT DISTINCT ON (p.isin) p.isin, p.market_cap, p.close FROM price_daily p JOIN members m USING (isin)
+         WHERE p.market_cap IS NOT NULL AND p.series IN ('EQ', 'SM') ORDER BY p.isin, p.trade_date DESC
+    ),
+    quarters AS (
+        SELECT DISTINCT ON (q.symbol, q.period_end) q.symbol, q.period_end, q.q_pat
+          FROM fin_quarter q JOIN members m ON m.symbol = q.symbol
+         WHERE q.q_pat IS NOT NULL ORDER BY q.symbol, q.period_end DESC, q.consolidated DESC, q.broadcast_at DESC
+    ),
+    ranked AS (SELECT *, row_number() OVER (PARTITION BY symbol ORDER BY period_end DESC) AS rn FROM quarters),
+    ttm AS (SELECT symbol, sum(q_pat) AS pat FROM ranked WHERE rn <= 4 GROUP BY symbol HAVING count(*) = 4),
+    pe AS (
+        SELECT m.isin, m.symbol, m.industry, mc.close, CASE WHEN t.pat > 0 THEN mc.market_cap / t.pat END AS pe
+          FROM members m JOIN mcap mc USING (isin) LEFT JOIN ttm t USING (symbol)
+    ),
+    industry AS (
+        SELECT industry, percentile_cont(0.5) WITHIN GROUP (ORDER BY pe) AS median_pe, count(pe) AS members
+          FROM pe WHERE pe IS NOT NULL GROUP BY industry HAVING count(pe) >= 5
+    )
+    SELECT p.symbol, p.industry, round(CAST(p.pe AS numeric), 1) AS pe, round(CAST(i.median_pe AS numeric), 1) AS sector_pe, i.members
+      FROM pe p LEFT JOIN industry i USING (industry)
+"""
+
+
+def pe_table(connection: Connection) -> dict[str, dict[str, Any]]:
+    """Per universe symbol: trailing P/E, its industry, and the industry's median P/E (members with
+    positive TTM profit, at least five). One query for the list pages."""
+    out = {}
+    for r in rows(connection, _PE_TABLE):
+        pe, sector = (
+            (float(r["pe"]) if r["pe"] is not None else None),
+            (float(r["sector_pe"]) if r["sector_pe"] is not None else None),
+        )
+        out[r["symbol"]] = {
+            "pe": pe,
+            "industry": r["industry"],
+            "sector_pe": sector,
+            "members": r["members"],
+            "gap_pct": round((sector / pe - 1) * 100, 1) if pe and sector else None,
+        }
+    return out

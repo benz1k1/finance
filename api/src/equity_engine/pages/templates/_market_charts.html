@@ -1,0 +1,25 @@
+<div class="card bg-base-100 shadow-sm mb-4"><div class="card-body p-4">
+  <h2 class="card-title text-sm">Sector rotation over time <span class="font-normal text-base-content/60">— each industry's median 3-month return minus the market's, in points; above zero is leading</span></h2>
+  <div class="flex flex-wrap items-center gap-1 text-xs my-1" id="range-toggle"><span class="w-16 text-base-content/60">Range</span>
+    {% for r in ranges %}<label class="btn btn-xs {% if r == range %}btn-active btn-primary{% else %}btn-ghost{% endif %}"><input type="radio" name="range" value="{{ r }}" class="hidden" {% if r == range %}checked{% endif %}>{{ r }}</label>{% endfor %}
+    <label class="btn btn-xs ml-2 {% if smooth %}btn-active btn-primary{% else %}btn-ghost{% endif %}" title="Draw curves through the points instead of straight segments; every data point stays on the line"><input type="checkbox" name="smooth" value="true" class="hidden" {% if smooth %}checked{% endif %}><i class="mdi mdi-chart-bell-curve-cumulative"></i> smooth</label>
+  </div>
+  <div class="flex flex-wrap items-center gap-1 text-xs my-1" id="industry-chips"><span class="w-16 text-base-content/60">Industries</span>
+    {% for name in industries %}<label class="btn btn-xs {% if name in chosen %}btn-active btn-primary{% else %}btn-ghost{% endif %}" title="latest {{ '%+.1f' % latest[name] }} pts · {{ members[name] }} members"><input type="checkbox" name="industry" value="{{ name }}" class="hidden" {% if name in chosen %}checked{% endif %}>{{ name }} <span class="{% if latest[name] >= 0 %}text-success{% else %}text-error{% endif %} ml-1">{{ '%+.1f' % latest[name] }}</span></label>{% endfor %}
+  </div>
+  {% with chart = rotation_chart, chart_id = 'rotation-chart', chart_label = 'Industry relative 3-month return over time' %}{% include "_line_chart.html" %}{% endwith %}
+  <p class="text-xs text-base-content/60">Up to {{ max_series }} industries at once; the default is the three strongest and three weakest today. Every {{ step }}{{ 'st' if step == 1 else ('nd' if step == 2 else ('rd' if step == 3 else 'th')) }} trade date from {{ start | fmt_date }} to {{ end | fmt_date }}, recomputed from prices with today's industry mapping (past runs stored none), so a company counts in its current industry throughout, and from raw closes, where the Radar's engine adjusts for bonuses and splits — the two can differ by a few tenths of a point on the same day. The newest trade date is always the last point. Industries with under five priced members are left out.</p>
+</div></div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+  <div class="card bg-base-100 shadow-sm"><div class="card-body p-4">
+    <h2 class="card-title text-sm">Breadth <span class="font-normal text-base-content/60">— share of the universe above its 200-day average, and advancing over a month</span></h2>
+    {% with chart = breadth_chart, chart_id = 'breadth-chart', chart_label = 'Breadth over time' %}{% include "_line_chart.html" %}{% endwith %}
+    <p class="text-xs text-base-content/60">From the engine runs' regime rows (every 5th trade date in the backtest, daily since Oct-2026). Risk on needs more than 60% above the 200-day average; risk off is under 40%.</p>
+  </div></div>
+  <div class="card bg-base-100 shadow-sm"><div class="card-body p-4">
+    <h2 class="card-title text-sm">Median 3-month return <span class="font-normal text-base-content/60">— the typical stock's trailing quarter</span></h2>
+    {% with chart = median_chart, chart_id = 'median-chart', chart_label = 'Median 3-month return over time' %}{% include "_line_chart.html" %}{% endwith %}
+    <p class="text-xs text-base-content/60">Regime is risk off when this is negative with breadth under 40%, risk on when positive with breadth over 60%.</p>
+  </div></div>
+</div>

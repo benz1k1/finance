@@ -6,17 +6,17 @@
 <form class="card bg-base-100 shadow-sm mb-3" hx-get="/screen" hx-target="#screen-rows" hx-trigger="change, input changed delay:400ms from:[name=min_mcap]" hx-push-url="true" hx-indicator="#screen-busy">
   <div class="card-body p-4 gap-3">
     <div class="flex flex-wrap items-center gap-1 text-sm"><span class="w-28 text-xs text-base-content/60">Stance</span>
-      {% for st in stances %}<label class="btn btn-xs {% if st in sel.stance %}btn-active {{ STANCE_CLASS[st] | replace('badge-', 'btn-') | replace(' btn-outline', ' btn-outline') }}{% else %}btn-ghost{% endif %}"><input type="checkbox" name="stance" value="{{ st }}" class="hidden" {% if st in sel.stance %}checked{% endif %}>{{ STANCE_LABEL[st] }}</label>{% endfor %}
+      {% for st in stances %}<label class="btn btn-xs" x-data="{ on: {{ 'true' if st in sel.stance else 'false' }} }" :class="on ? 'btn-active {{ STANCE_CLASS[st] | replace('badge-', 'btn-') }}' : 'btn-ghost'"><input type="checkbox" name="stance" value="{{ st }}" class="hidden" x-model="on">{{ STANCE_LABEL[st] }}</label>{% endfor %}
     </div>
     <div class="flex flex-wrap items-center gap-1 text-sm"><span class="w-28 text-xs text-base-content/60">Conviction</span>
-      {% for c in convictions %}<label class="btn btn-xs {% if c in sel.conviction %}btn-active btn-primary{% else %}btn-ghost{% endif %}"><input type="checkbox" name="conviction" value="{{ c }}" class="hidden" {% if c in sel.conviction %}checked{% endif %}>{{ CONVICTION_LABEL[c] }}</label>{% endfor %}
+      {% for c in convictions %}<label class="btn btn-xs" x-data="{ on: {{ 'true' if c in sel.conviction else 'false' }} }" :class="on ? 'btn-active btn-primary' : 'btn-ghost'"><input type="checkbox" name="conviction" value="{{ c }}" class="hidden" x-model="on">{{ CONVICTION_LABEL[c] }}</label>{% endfor %}
     </div>
     <div class="flex flex-wrap items-center gap-1 text-sm"><span class="w-28 text-xs text-base-content/60">Has signal from</span>
-      {% for e in engines %}<label class="btn btn-xs {% if e.engine_key in sel.has %}btn-active btn-success{% else %}btn-ghost{% endif %}"><input type="checkbox" name="has" value="{{ e.engine_key }}" class="hidden" {% if e.engine_key in sel.has %}checked{% endif %}>{{ e.name }}</label>{% endfor %}
+      {% for e in engines %}<label class="btn btn-xs" x-data="{ on: {{ 'true' if e.engine_key in sel.has else 'false' }} }" :class="on ? 'btn-active btn-success' : 'btn-ghost'"><input type="checkbox" name="has" value="{{ e.engine_key }}" class="hidden" x-model="on">{{ e.name }}</label>{% endfor %}
       <label class="label cursor-pointer gap-1 ml-2 text-xs"><input type="checkbox" name="confirmed_only" value="true" class="checkbox checkbox-xs" {% if sel.confirmed_only %}checked{% endif %}>confirmed only</label>
     </div>
     <div class="flex flex-wrap items-center gap-1 text-sm"><span class="w-28 text-xs text-base-content/60">No signal from</span>
-      {% for e in engines %}<label class="btn btn-xs {% if e.engine_key in sel.has_not %}btn-active btn-error{% else %}btn-ghost{% endif %}"><input type="checkbox" name="has_not" value="{{ e.engine_key }}" class="hidden" {% if e.engine_key in sel.has_not %}checked{% endif %}>{{ e.name }}</label>{% endfor %}
+      {% for e in engines %}<label class="btn btn-xs" x-data="{ on: {{ 'true' if e.engine_key in sel.has_not else 'false' }} }" :class="on ? 'btn-active btn-error' : 'btn-ghost'"><input type="checkbox" name="has_not" value="{{ e.engine_key }}" class="hidden" x-model="on">{{ e.name }}</label>{% endfor %}
     </div>
     <div class="flex flex-wrap items-center gap-3 text-sm"><span class="w-28 text-xs text-base-content/60">Universe</span>
       <label class="input input-bordered input-xs flex items-center gap-1 w-56">min market cap ₹<input type="number" name="min_mcap" value="{{ sel.min_mcap if sel.min_mcap is not none else '' }}" class="grow" placeholder="0"> cr</label>
@@ -27,11 +27,14 @@
   </div>
 </form>
 <div class="card bg-base-100 shadow-sm"><div class="card-body p-4">
-  <div class="overflow-x-auto"><table class="table table-sm">
-    <thead><tr><th>Symbol</th><th>Name</th><th>Stance</th><th>Conviction</th><th class="n">Bull</th><th class="n">Bear</th><th>Engines that fired</th><th class="n">Market cap (₹ cr)</th><th class="n">Close</th><th>Indices</th></tr></thead>
+  {# columns: key, label, numeric, default-descending; stance and conviction sort by rank so Buy / High come first #}
+  {% set columns = [('symbol', 'Symbol', false, false), ('name', 'Name', false, false), ('stance', 'Stance', true, false), ('conviction', 'Conviction', true, false), ('bull', 'Bull', true, true), ('bear', 'Bear', true, true), ('net', 'Net', true, true), ('engines', 'Engines that fired', true, true), ('mcap', 'Market cap (₹ cr)', true, true), ('close', 'Close', true, true)] %}
+  <div class="overflow-x-auto" x-data="{ key: '', desc: true, sort(k, numeric, descFirst) { if (this.key === k) { this.desc = !this.desc } else { this.key = k; this.desc = descFirst } ; const body = document.getElementById('screen-rows'); const rows = Array.from(body.querySelectorAll('tr[data-row]')); rows.sort((a, b) => { const av = a.dataset[k], bv = b.dataset[k]; const an = av === '' || av === undefined ? null : (numeric ? parseFloat(av) : av), bn = bv === '' || bv === undefined ? null : (numeric ? parseFloat(bv) : bv); if (an === null) return 1; if (bn === null) return -1; return (an < bn ? -1 : an > bn ? 1 : 0) * (this.desc ? -1 : 1) }); rows.forEach(r => body.appendChild(r)) } }">
+  <table class="table table-sm">
+    <thead><tr>{% for key, label, numeric, desc_first in columns %}<th class="{% if numeric and key not in ('stance', 'conviction', 'engines') %}n {% endif %}cursor-pointer select-none hover:text-primary" @click="sort('{{ key }}', {{ 'true' if numeric else 'false' }}, {{ 'true' if desc_first else 'false' }})" title="Sort by {{ label }}">{{ label }} <span x-show="key === '{{ key }}'" x-cloak><i class="mdi" :class="desc ? 'mdi-arrow-down' : 'mdi-arrow-up'"></i></span></th>{% endfor %}<th>Indices</th></tr></thead>
     <tbody id="screen-rows">{% include "_screen_rows.html" %}</tbody>
   </table></div>
-  <p class="text-xs text-base-content/60">Long first, then by conviction and size; at most {{ limit }} rows. Chips are filters over the newest run's stance table (spec §75).</p>
+  <p class="text-xs text-base-content/60">Buy first, then by conviction and size; at most {{ limit }} rows. Click a heading to sort the rows shown; click again to reverse. Chips are filters over the newest run's stance table (spec §75).</p>
 </div></div>
 {% endif %}
 {% endblock %}

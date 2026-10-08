@@ -160,7 +160,7 @@ def test_company_endpoint_and_page(client: httpx.Client, reliance: dict):
         if product["turnover_pct"] is not None
     ]
     assert shares == sorted(shares, reverse=True) and sum(shares) <= 100.5
-    page = client.get("/security/RELIANCE", headers=HTML)
+    page = client.get("/equities/RELIANCE", headers=HTML)
     assert page.status_code == 200
     for marker in (
         'id="ownership-card"',
@@ -177,7 +177,7 @@ def test_a_company_without_a_sustainability_report_says_so(client: httpx.Client,
         "WHERE NOT EXISTS (SELECT 1 FROM company_profile p WHERE p.symbol = s.nse_symbol) ORDER BY 1 LIMIT 1"
     ).scalar()
     assert client.get(f"/api/company/{symbol}").json() == {"success": True, "symbol": symbol, "profile": None}
-    page = client.get(f"/security/{symbol}", headers=HTML)
+    page = client.get(f"/equities/{symbol}", headers=HTML)
     assert page.status_code == 200 and "has not filed a sustainability report" in page.text
 
 
@@ -199,6 +199,6 @@ def test_deal_endpoint(client: httpx.Client, connection):
 
 def test_ownership_screen_sorts_by_the_chosen_column(client: httpx.Client, reliance: dict):
     page = client.get("/ownership", params={"sort": "dii_pct"}, headers=HTML)
-    assert page.status_code == 200 and 'id="ownership-table"' in page.text and "/security/" in page.text
+    assert page.status_code == 200 and 'id="ownership-table"' in page.text and "/equities/" in page.text
     assert client.get("/ownership", params={"sort": "drop table"}, headers=HTML).status_code == 422
     assert client.get("/api/ownership/NOSUCHSYMBOL").status_code == 404

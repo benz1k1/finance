@@ -6,8 +6,10 @@ item is finished or a decision changes.
 
 Decisions already taken (spec §82.1, §69.1, §80):
 
-- NSE is the only exchange source. No BSE feed at all (decided 2026-10-01; the BSE scrip list
-  was removed the same day). Market cap and shares outstanding come from NSE's daily reports
+- NSE is the only exchange source for *stocks*. No BSE feed at all (decided 2026-10-01; the BSE
+  scrip list was removed the same day). **Exception decided 2026-10-04:** five global index levels
+  (S&P 500, Nikkei 225, DAX, Euro Stoxx 50, Shanghai Composite) from Yahoo Finance's chart endpoint,
+  daily from 1990, index levels only — no foreign stock prices. Market cap and shares outstanding come from NSE's daily reports
   bundle.
 - History starts in 2019. Results from the Dec-2018 quarter, shareholding from Sep-2021, no
   delisted companies, no paid fundamentals vendor.
@@ -147,13 +149,86 @@ stored stance of every security against `stance.compute`:
       (Oil & Gas had 19 signals on 18 members)
 - [x] Ownership percentages rounded (`77.25999999999999` was in the ledger); deep value no longer
       prints "EV/EBITDA None"; technical trend says "at its 52-week low" instead of "+0% from"
-- [x] Stance colours: long green, short blue, avoid grey (user rule); stance history collapses to
-      one entry per as-of date
+- [x] Stance labels and colours (user decisions 2026-10-04, latest wins): shown as **Buy / Lean buy /
+      Neutral / Lean sell / Sell / Avoid**, buy green, sell red, avoid grey; deal sells red too. Ledger
+      keys stay LONG / SHORT and the arithmetic is unchanged. Supersedes spec §118's "lean long,
+      never buy" wording rule. Stance history collapses to one entry per as-of date
 - [ ] Headlines still coincide where the rounded numbers do ("+4% from 52-week low" on 11 names);
       that is the data, not a defect. The 52-week-low cluster on 1 Oct 2026 (59 of 478) is real:
       53 on 29 Sep, 40 on 28 Sep
 - [ ] `promoter_activity` reports event-based shareholding filings (period_end = the event date,
       e.g. `2026-07-30`) as a "quarter"; label it by period_end kind once the filing list says which
+
+## Pages added 2026-10-04
+
+- [x] `/glossary` — Terminology: 65 terms (P&L, balance sheet, valuation, ownership, price, derivatives,
+      corporate actions, exchange rules, how the app scores) with a worked example each and links to
+      the engines that use them. Content is `pages/glossary.py`, plain data
+- [x] Engine examples: one worked scenario per catalogue engine (`pages/engine_examples.py`) on
+      `/engine` and each `/engine/{key}`; unbuilt engines say what they would detect
+- [x] `/client` and `/client/{name}` — deal counterparties from the bulk/block disclosures: search,
+      then a per-security disclosed portfolio (bought / sold / net quantity, average prices, net
+      marked at the newest close, unrealised %) and the deal list. Only disclosed trades, never a
+      holding statement; a negative net means more sold through deals than bought through them.
+      Client names link from the company page's deal table
+- [x] Radar breadth shows both halves: a two-slice donut of securities above / below their 200-day
+      average with the counts, and the denominator stated (securities with ≥ 200 sessions, stored as
+      `with_200dma` / `above_200dma` / `advancing_1m`, app migration 003). The old label said "of 494
+      priced securities" while the percentage was of the 480 with a 200-day history
+- [x] Sector rotation is a diverging bar chart (3-month gap vs the market, 6-month tick, member count)
+      instead of a badge strip
+- [x] Screener: the empty market-cap box no longer 422s every chip click; chips light up on click
+- [x] Client P&L: `service/clients.positions` books each client's disclosed deals at average cost —
+      realised on covered sells, unrealised on the open quantity at the newest close, portfolio value,
+      return on bought; sells with no disclosed buy behind them are "uncovered" and excluded. Totals on
+      the client list; sortable columns on the client page
+- [x] `/market` — sector rotation over time (recomputed from prices with today's industry mapping,
+      chips for up to 8 industries, 1y / 3y / all), breadth and median 3-month return lines from the
+      regime rows. "Over time" button on the Radar's sector card. Inline SVG via `pages/charts.py`
+- [x] Radar tiles: regime wording ("Risk off — broad downtrend" + one-line meaning), advancing donut,
+      median 3-month bar, stance donut (long green, short blue, neutral light grey, avoid dark grey).
+      Colour rule: negative is red everywhere; blue is the short stance / a sell, which is not negative
+- [x] Focus toggle: Nifty 50 / 100 / 200 / 500
+- [ ] Sector history uses today's membership and industry for every past date (past snapshots carry no
+      industry); point-in-time industry needs the membership history to carry industry codes
+- [x] Client type inferred from the name (`service/client_types.py`: ordered rules, foreign cues before
+      "fund", a list of known prop/HFT houses and foreign investors; every result carries the rule).
+      Shown on the client list (filter + counts), the client page and the company deal table
+- [x] Client About section: generated sentences from the disclosed book, plus public metadata from a
+      one-time Wikipedia lookup (`ingest.py clients-meta`, `client_meta` table, app migration 004,
+      responses cached under `raw/_reference/client_meta/`). Owner / beneficial-owner details are
+      not in NSE's files and are never guessed; a name with no relevant page is recorded as not found
+- [ ] Better metadata sources: SEBI's registered FPI / MF / AIF / PMS lists would classify with
+      authority instead of by name; MCA company master for private companies. Not fetched yet
+- [ ] `ingest.py clients-meta --shard i/n` overlapped and skipped names on 2026-10-04 even after the
+      pending list got a total order (536 lookups for 329 new rows, 190 never looked up); the single
+      worker finished the job. Unexplained — do not trust the shard option until it is
+- [ ] Client name normalisation (§69.2): the same house appears under several entities
+      (`ISHARES CORE MSCI EMERGING MARKETS ETF` vs `... MAURITIUS CO`); a grouping table would let a
+      client page cover a house. Repeat-counterparty network still not built
+
+## Global context (decided 2026-10-04, spec §120–§121)
+
+- [x] `global_index_daily` (data migration 012) + `service/global_markets.py`: five indexes, daily
+      from 1990 (Euro Stoxx 50 from 2007, Shanghai from 1997 on this feed), `ingest.py global`, also
+      run inside `daily`; cached one JSON per index per day under `raw/_reference/global_index/`.
+      Yahoo's `range=max` silently returns monthly bars — the fetch uses period1/period2 for daily
+- [x] Regime rows carry `global_3m_pct`, `global_stress`, `global_indexes` (app migration 005);
+      Radar "World" tile with per-index chips and the India-vs-world reading
+- [x] Engines: `global_resilience` (quality names beating the world median by 10 points during a
+      global drawdown; mirror GLOBAL_BETA_SELLOFF) and `historical_pe` (today's P/E against the
+      company's own P/E on past stress dates, Indian median 3m ≤ −10%, and expansion dates ≥ +10%,
+      sampled monthly from the regime history). 1-Oct-2026: world median −3%, not a drawdown, so
+      global_resilience is silent; historical_pe fired 49 times
+- [ ] **Backtesting through 2009 / 2001 is not possible with the data here.** Stock prices start in
+      2019 (decision 2026-10-01). NSE's archive does hold daily bhavcopies back to at least Jan-2000
+      (probed 2026-10-04: `raw/_reference/nse_archive_probe/`, legacy format, no ISIN column in 2000)
+      — about 4,700 files for 2000–2018. Loading them needs: a symbol→ISIN history (renames over 18
+      years), index membership before 2013 (none on hand), and results XBRL exists only from about
+      2012, so fundamentals engines would be blind before that; historical_pe could then use
+      2008–09 and 2011 as stress references. User decision needed before fetching
+- [ ] The P/E reference uses only 2 stress months so far (2020 and 2026); once more history or
+      more runs exist the MIN_DATES=3 bar for BELOW_RECESSION_PE will be met more often
 
 ## Universe: Nifty 500 (decided 2026-10-03)
 

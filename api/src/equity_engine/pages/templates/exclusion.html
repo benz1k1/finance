@@ -26,7 +26,7 @@
         <tbody>
           {% for e in excluded %}
           <tr>
-            <td><a class="link link-primary" href="/security/{{ e.symbol | urlencode }}">{{ e.symbol }}</a></td>
+            <td><a class="link link-primary" href="/equities/{{ e.symbol | urlencode }}">{{ e.symbol }}</a></td>
             <td>{{ e.name }}</td>
             <td>{{ e.isin }}</td>
             <td>{% for label in e.labels %}<span class="badge badge-sm badge-outline mr-1">{{ label }}</span>{% endfor %}</td>

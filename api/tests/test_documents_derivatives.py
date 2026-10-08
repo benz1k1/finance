@@ -45,12 +45,18 @@ def test_announcements_month_parses():
 def test_fo_bhav_aggregates_per_underlying():
     path = RAW / "nse_fo_bhav/2026/BhavCopy_NSE_FO_0_0_0_20261001_F_0000.csv.zip"
     if not path.is_file():
-        pytest.fail(f"{path} is not cached; run: python ingest.py derivatives --from 2026-10-01 --to 2026-10-01")
+        pytest.fail(
+            f"{path} is not cached; run: python ingest.py derivatives --from 2026-10-01 --to 2026-10-01"
+        )
     rows = nse.fo_bhav(path.read_bytes(), date(2026, 10, 1))
     by_symbol = {r.symbol: r for r in rows}
     assert len(by_symbol) > 150 and "RELIANCE" in by_symbol and "NIFTY" not in by_symbol
     reliance = by_symbol["RELIANCE"]
-    assert reliance.futures_oi > 0 and reliance.near_expiry is not None and reliance.near_expiry >= date(2026, 10, 1)
+    assert (
+        reliance.futures_oi > 0
+        and reliance.near_expiry is not None
+        and reliance.near_expiry >= date(2026, 10, 1)
+    )
     assert reliance.pcr_oi is not None and 0 < float(reliance.pcr_oi) < 5
     assert reliance.basis_pct is not None and abs(float(reliance.basis_pct)) < 5
 
@@ -64,5 +70,5 @@ def test_timeline_api_and_page(client: httpx.Client):
     assert ats == sorted(ats, reverse=True)
     only_actions = client.get("/api/timeline/RELIANCE", params={"kind": "ACTION", "limit": 20}).json()
     assert all(e["kind"] == "ACTION" for e in only_actions["entries"])
-    page = client.get("/security/RELIANCE/timeline", headers={"Accept": "text/html"})
+    page = client.get("/equities/RELIANCE/timeline", headers={"Accept": "text/html"})
     assert page.status_code == 200 and 'id="timeline-rows"' in page.text

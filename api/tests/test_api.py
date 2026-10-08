@@ -25,12 +25,26 @@ def test_sources_are_all_registered_and_none_empty(client: httpx.Client):
     assert body["success"] is True
     by_id = {source["source_id"]: source for source in body["sources"]}
     assert len(by_id) >= 35
-    assert {"nse_bhav_udiff", "nse_delivery_mto", "nse_daily_reports", "nse_surveillance_esm", "nse_results_xbrl"} <= set(by_id)
+    assert {
+        "nse_bhav_udiff",
+        "nse_delivery_mto",
+        "nse_daily_reports",
+        "nse_surveillance_esm",
+        "nse_results_xbrl",
+    } <= set(by_id)
     assert not [name for name in by_id if not name.startswith("nse_")]  # NSE is the only exchange source
     # Sources added later may not have been fetched yet; the Phase 0 ones must have files.
     empty = {name for name, source in by_id.items() if source["state"] == "EMPTY"}
-    core = {"nse_bhav_udiff", "nse_delivery_mto", "nse_daily_reports", "nse_equity_master", "nse_surveillance_esm",
-            "nse_bulk_deal_history", "nse_shareholding_filings", "nse_results_filings"}
+    core = {
+        "nse_bhav_udiff",
+        "nse_delivery_mto",
+        "nse_daily_reports",
+        "nse_equity_master",
+        "nse_surveillance_esm",
+        "nse_bulk_deal_history",
+        "nse_shareholding_filings",
+        "nse_results_filings",
+    }
     assert not (core & empty), core & empty
 
 
@@ -50,7 +64,7 @@ def test_unknown_symbol_is_404_json_for_the_api_and_html_for_the_page(client: ht
         "success": False,
         "error": "No NSE security with symbol NOSUCHSYMBOL",
     }
-    page = client.get("/security/NOSUCHSYMBOL", headers=HTML)
+    page = client.get("/equities/NOSUCHSYMBOL", headers=HTML)
     assert page.status_code == 404 and "text/html" in page.headers["content-type"]
     assert "No NSE security with symbol NOSUCHSYMBOL" in page.text
 
@@ -76,19 +90,19 @@ def test_search_by_symbol_name_and_isin(client: httpx.Client):
 def test_pages_render(client: httpx.Client):
     dashboard = client.get("/health", headers=HTML)
     assert dashboard.status_code == 200 and 'id="source-table"' in dashboard.text
-    listing = client.get("/security", headers=HTML)
-    assert listing.status_code == 200 and "<html" in listing.text and "/security/RELIANCE" in listing.text
-    detail = client.get("/security/RELIANCE", headers=HTML)
+    listing = client.get("/equities", headers=HTML)
+    assert listing.status_code == 200 and "<html" in listing.text and "/equities/RELIANCE" in listing.text
+    detail = client.get("/equities/RELIANCE", headers=HTML)
     assert detail.status_code == 200 and "INE002A01018" in detail.text and 'id="price-table"' in detail.text
     assert 'id="excluded-banner"' not in detail.text
     # A symbol with an ampersand survives the URL.
-    assert client.get("/security/M%26M", headers=HTML).status_code == 200
+    assert client.get("/equities/M%26M", headers=HTML).status_code == 200
 
 
 def test_search_box_gets_a_fragment_not_a_page(client: httpx.Client):
-    fragment = client.get("/security", params={"q": "RELI"}, headers={**HTML, "HX-Request": "true"})
+    fragment = client.get("/equities", params={"q": "RELI"}, headers={**HTML, "HX-Request": "true"})
     assert (
-        fragment.status_code == 200 and "<html" not in fragment.text and "/security/RELIANCE" in fragment.text
+        fragment.status_code == 200 and "<html" not in fragment.text and "/equities/RELIANCE" in fragment.text
     )
 
 
@@ -125,5 +139,5 @@ def test_exclusions(client: httpx.Client):
     ]
     # A trade-for-trade security shows the banner on its own page.
     symbol = next(item["symbol"] for item in body["excluded"] if "Series BE" in item["labels"])
-    page = client.get(f"/security/{symbol}", headers=HTML)
+    page = client.get(f"/equities/{symbol}", headers=HTML)
     assert page.status_code == 200 and 'id="excluded-banner"' in page.text and "Series BE" in page.text

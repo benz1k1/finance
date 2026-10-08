@@ -116,6 +116,12 @@ CREATE TABLE IF NOT EXISTS market_regime (
     above_200dma_pct     numeric(5, 1),
     median_return_3m_pct numeric(7, 2),
     advancing_1m_pct     numeric(5, 1),
+    with_200dma          integer,                      -- securities with >= 200 sessions: the pct's denominator
+    above_200dma         integer,
+    advancing_1m         integer,
+    global_3m_pct        numeric(7, 2),                 -- median 3-month return of the five global indexes
+    global_stress        boolean,                       -- the world is in a drawdown (spec §120)
+    global_indexes       jsonb,                         -- per index: last close, 1m / 3m returns, above 200-day
     sectors              jsonb NOT NULL                 -- industry: relative 3m / 6m return, members
 );
 CREATE INDEX IF NOT EXISTS market_regime_as_of_idx ON market_regime (as_of);
@@ -149,4 +155,28 @@ CREATE TABLE IF NOT EXISTS stance_outcome (
     max_drawdown_pct numeric(10, 4) NOT NULL,
     marked_at        timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (stance_id, horizon_days)
+);
+
+-- ------------------------------------------------------------------ deal counterparties (spec §65)
+-- Public metadata looked up once online and cached; found = false records a search with no result.
+CREATE TABLE IF NOT EXISTS client_meta (
+    client_name   text PRIMARY KEY,
+    found         boolean NOT NULL,
+    title         text,
+    description   text,
+    extract       text,
+    url           text,
+    source        text NOT NULL,
+    query         text NOT NULL,
+    looked_up_at  timestamptz NOT NULL DEFAULT now()
+);
+
+-- ------------------------------------------------------------------ government ownership (seeded from psu.csv)
+CREATE TABLE IF NOT EXISTS psu (
+    symbol    text PRIMARY KEY,
+    name      text NOT NULL,
+    owner     text NOT NULL CHECK (owner IN ('central', 'state', 'psu-promoted')),
+    category  text NOT NULL,
+    parent    text,
+    note      text
 );

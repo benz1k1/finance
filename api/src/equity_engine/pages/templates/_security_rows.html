@@ -1,12 +1,18 @@
+{% set stance_rank = {'LONG': 0, 'LEAN_LONG': 1, 'NEUTRAL': 2, 'LEAN_SHORT': 3, 'SHORT': 4, 'AVOID': 5} %}
 {% for s in securities %}
-<tr>
-  <td><a class="link link-primary font-medium" href="/security/{{ s.nse_symbol | urlencode }}">{{ s.nse_symbol }}</a></td>
-  <td>{{ s.name }}</td>
+{% set st0 = stances.get(s.nse_symbol) %}{% set v0 = pe.get(s.nse_symbol) %}
+<tr data-row data-symbol="{{ s.nse_symbol }}" data-name="{{ s.name | lower }}" data-stance="{{ stance_rank[st0.stance] if st0 else '' }}" data-series="{{ s.series }}" data-segment="{{ s.segment }}" data-mcap="{{ s.market_cap if s.market_cap is not none else '' }}" data-close="{{ s.close if s.close is not none else '' }}" data-pe="{{ v0.pe if v0 and v0.pe else '' }}" data-sector-pe="{{ v0.sector_pe if v0 and v0.sector_pe else '' }}" data-gap="{{ v0.gap_pct if v0 and v0.gap_pct is not none else '' }}" data-deliv="{{ s.deliv_pct if s.deliv_pct is not none else '' }}" data-listed="{{ s.listing_date or '' }}">
+  <td><a class="link link-primary font-medium" href="/equities/{{ s.nse_symbol | urlencode }}">{{ s.nse_symbol }}</a></td>
+  <td>{{ s.name }} {% with tag = psu.get(s.nse_symbol) %}{% include "_psu_tag.html" %}{% endwith %}</td>
   <td>{% set st = stances.get(s.nse_symbol) %}{% if st %}<span class="badge badge-sm {{ STANCE_CLASS[st.stance] }}" title="{{ CONVICTION_LABEL[st.conviction] }}{% if st.gate %} — {{ st.gate }}{% endif %}">{{ STANCE_LABEL[st.stance] }}</span>{% else %}<span class="text-xs text-base-content/40">—</span>{% endif %}</td>
   <td>{{ s.series }}</td>
   <td>{{ s.segment }}</td>
   <td class="n">{{ s.market_cap | crore }}</td>
   <td class="n">{{ s.close | num(2) }}</td>
+  {% set v = pe.get(s.nse_symbol) %}
+  <td class="n">{{ v.pe | num(1) if v and v.pe else '—' }}</td>
+  <td class="n" {% if v and v.sector_pe %}title="{{ v.industry }}: median trailing P/E of {{ v.members }} members with positive profit"{% endif %}>{{ v.sector_pe | num(1) if v and v.sector_pe else '—' }}</td>
+  <td class="n whitespace-nowrap" {% if v and v.gap_pct is not none %}title="Price at the sector's median P/E on the same TTM profit — a yardstick, not a target"{% endif %}>{% if v and v.gap_pct is not none and s.close %}₹{{ ((s.close | float) * (1 + v.gap_pct / 100)) | num(0) }} <span class="{% if v.gap_pct > 0 %}text-success{% elif v.gap_pct < 0 %}text-error{% endif %}">{{ v.gap_pct | pct(true) }}%</span>{% else %}—{% endif %}</td>
   <td class="n">{{ s.deliv_pct | num(2) }}</td>
   <td>{{ s.listing_date | fmt_date }}</td>
 </tr>

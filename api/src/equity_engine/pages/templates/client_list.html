@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Deal clients · Equity Engine{% endblock %}
+{% block heading %}Deal counterparties{% endblock %}
+{% block header_actions %}
+<span class="loading loading-spinner loading-xs htmx-indicator" id="search-busy"></span>
+<form class="flex items-center gap-2" id="client-search" hx-get="/client" hx-trigger="input changed delay:250ms from:[name=q], search from:[name=q], change from:[name=type]" hx-target="#client-rows" hx-indicator="#search-busy" hx-push-url="true">
+  <input type="search" name="q" value="{{ q }}" placeholder="Client name" autofocus class="input input-bordered input-sm w-72">
+  <select name="type" class="select select-bordered select-sm"><option value="">every type</option>{% for c in type_counts %}<option value="{{ c.type }}" {% if c.type == type %}selected{% endif %}>{{ c.label }} ({{ c.clients }})</option>{% endfor %}</select>
+</form>
+{% endblock %}
+{% block content %}
+<div class="flex flex-wrap gap-1 mb-3" id="type-counts">
+  {% for c in type_counts %}<a class="badge {{ c.badge }} {% if c.type != type %}opacity-80 hover:opacity-100{% endif %}" href="/client?type={{ c.type }}{% if q %}&q={{ q | urlencode }}{% endif %}" title="{{ c.clients | num }} clients · {{ c.deals | num }} deals · ₹{{ c.value_crore | num(0) }} cr">{{ c.label }} <span class="ml-1 opacity-70">{{ c.clients }}</span></a>{% endfor %}
+</div>
+<div class="card bg-base-100 shadow-sm">
+  <div class="card-body p-4">
+    {% set columns = [('client', 'Client', false), ('type', 'Type', false), ('deals', 'Deals', true), ('securities', 'Securities', true), ('bought', 'Bought (₹ cr)', true), ('sold', 'Sold (₹ cr)', true), ('open', 'Open value (₹ cr)', true), ('pnl', 'P&L (₹ cr)', true), ('ret', 'Return %', true), ('last', 'Active', false)] %}
+    <div class="overflow-x-auto" x-data="{ key: '', desc: true, sort(k, numeric) { if (this.key === k) { this.desc = !this.desc } else { this.key = k; this.desc = numeric } ; const body = document.getElementById('client-rows'); const rows = Array.from(body.querySelectorAll('tr[data-client]')); rows.sort((a, b) => { const av = a.dataset[k], bv = b.dataset[k]; const an = av === '' || av === undefined ? null : (numeric ? parseFloat(av) : av), bn = bv === '' || bv === undefined ? null : (numeric ? parseFloat(bv) : bv); if (an === null) return 1; if (bn === null) return -1; return (an < bn ? -1 : an > bn ? 1 : 0) * (this.desc ? -1 : 1) }); rows.forEach(r => body.appendChild(r)) } }">
+      <table class="table table-sm">
+        <thead><tr>{% for key, label, numeric in columns %}<th class="{% if numeric %}n {% endif %}cursor-pointer select-none hover:text-primary" @click="sort('{{ key }}', {{ 'true' if numeric else 'false' }})" title="Sort by {{ label | replace('&amp;', '&') }}">{{ label }} <span x-show="key === '{{ key }}'" x-cloak><i class="mdi" :class="desc ? 'mdi-arrow-down' : 'mdi-arrow-up'"></i></span></th>{% endfor %}</tr></thead>
+        <tbody id="client-rows">{% include "_client_rows.html" %}</tbody>
+      </table>
+    </div>
+    <p class="text-xs text-base-content/60">Named counterparties in NSE's bulk and block deal disclosures for the universe since 2019, most deals first, at most {{ limit }} rows. Names are as NSE prints them; the same house can appear under several entities. Type is inferred from the name (hover a badge for the rule); click a heading to sort the rows shown. Open value is what the disclosed buys still held are worth at the latest close; P&amp;L is realised (sells matched to earlier disclosed buys at average cost) plus unrealised; return is that P&amp;L over everything bought. Only disclosed trades, never a holding statement.</p>
+  </div>
+</div>
+{% endblock %}

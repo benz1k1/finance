@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block title %}{{ security.nse_symbol }} timeline · Equity Engine{% endblock %}
 {% block heading %}{{ security.nse_symbol }} — timeline{% endblock %}
-{% block header_actions %}<a href="/security/{{ security.nse_symbol | urlencode }}" class="btn btn-ghost btn-xs"><i class="mdi mdi-arrow-left"></i> Company</a>{% endblock %}
+{% block header_actions %}<a href="/equities/{{ security.nse_symbol | urlencode }}" class="btn btn-ghost btn-xs"><i class="mdi mdi-arrow-left"></i> Company</a>{% endblock %}
 {% block content %}
-<form class="flex flex-wrap items-center gap-1 mb-3 text-sm" hx-get="/security/{{ security.nse_symbol | urlencode }}/timeline" hx-target="#timeline-rows" hx-trigger="change" hx-push-url="true">
+<form class="flex flex-wrap items-center gap-1 mb-3 text-sm" hx-get="/equities/{{ security.nse_symbol | urlencode }}/timeline" hx-target="#timeline-rows" hx-trigger="change" hx-push-url="true">
   <span class="text-xs text-base-content/60 mr-2">Show</span>
   {% for k in kinds %}<label class="btn btn-xs {% if k in selected %}btn-active btn-primary{% else %}btn-ghost{% endif %}"><input type="checkbox" name="kind" value="{{ k }}" class="hidden" {% if k in selected %}checked{% endif %}>{{ k | lower | replace('_', ' ') }}</label>{% endfor %}
 </form>

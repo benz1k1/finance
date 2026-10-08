@@ -1,6 +1,6 @@
 {% for s in signals %}
 <tr>
-  <td><a class="link link-primary font-medium" href="/security/{{ s.symbol | urlencode }}">{{ s.symbol }}</a></td>
+  <td><a class="link link-primary font-medium" href="/equities/{{ s.symbol | urlencode }}">{{ s.symbol }}</a></td>
   <td><a class="link link-hover" href="/engine/{{ s.engine_key }}">{{ s.engine_name }}</a></td>
   <td class="whitespace-nowrap"><span class="font-medium {{ DIRECTION_CLASS[s.direction] }}">{{ s.signal_type | replace('_', ' ') | lower }}</span></td>
   <td><span class="badge badge-xs {{ STAGE_CLASS[s.stage] }}">{{ s.stage | lower }}</span></td>
